@@ -40,11 +40,18 @@ class GridWorld:
         return self.observe()
 
     def observe(self):
-        delta = (self.food_pos - self.agent_pos) / max(1, self.size - 1)
+        denom = max(1, self.size - 1)
+        delta = (self.food_pos - self.agent_pos) / denom
+
+        x_norm = self.agent_pos[0] / denom
+        y_norm = self.agent_pos[1] / denom
+
         return np.array([
             delta[0],
             delta[1],
             self.agent_energy,
+            x_norm,
+            y_norm,
         ], dtype=np.float32)
 
     def step(self, action):

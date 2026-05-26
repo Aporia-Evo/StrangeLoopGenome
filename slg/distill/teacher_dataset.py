@@ -66,6 +66,8 @@ def build_teacher_dataset(
     num_genomes=5,
     seeds_per_genome=50,
     seed_offset=0,
+    min_foods=0,
+    max_wall_hits=None,
 ):
     top_genomes = load_top_genomes(top_genomes_path)
     selected = top_genomes[:num_genomes]
@@ -75,6 +77,7 @@ def build_teacher_dataset(
     all_logits = []
     all_rewards = []
     episode_rows = []
+    skipped = 0
 
     for genome_rank, (record, genome) in enumerate(selected):
         policy = make_recurrent_policy(genome, config)
@@ -82,6 +85,14 @@ def build_teacher_dataset(
         for local_seed in range(seeds_per_genome):
             seed = seed_offset + genome_rank * seeds_per_genome + local_seed
             episode = collect_teacher_episode(policy, seed=seed)
+
+            if episode['foods'] < min_foods:
+                skipped += 1
+                continue
+
+            if max_wall_hits is not None and episode['wall_hits'] > max_wall_hits:
+                skipped += 1
+                continue
 
             start = sum(len(x) for x in all_obs)
             length = len(episode['actions'])
@@ -102,6 +113,12 @@ def build_teacher_dataset(
                 'foods': episode['foods'],
                 'wall_hits': episode['wall_hits'],
             })
+
+    if not all_obs:
+        raise ValueError(
+            'Teacher dataset is empty after filtering. '
+            'Lower --min-foods or increase --max-wall-hits.'
+        )
 
     observations = np.concatenate(all_obs, axis=0)
     actions = np.concatenate(all_actions, axis=0)
@@ -125,9 +142,12 @@ def build_teacher_dataset(
         'num_genomes': len(selected),
         'seeds_per_genome': seeds_per_genome,
         'num_episodes': len(episode_rows),
+        'num_skipped_episodes': skipped,
         'num_samples': int(len(actions)),
         'observation_dim': int(observations.shape[1]),
         'num_actions': int(logits.shape[1]),
+        'min_foods': min_foods,
+        'max_wall_hits': max_wall_hits,
         'mean_episode_foods': float(np.mean([row['foods'] for row in episode_rows])),
         'mean_episode_wall_hits': float(np.mean([row['wall_hits'] for row in episode_rows])),
     }

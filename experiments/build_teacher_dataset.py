@@ -23,9 +23,37 @@ def load_config():
     )
 
 
+def resolve_run_path(run_dir):
+    run_path = PROJECT_ROOT / run_dir
+    top_genomes_path = run_path / 'top_genomes.pkl'
+
+    if top_genomes_path.exists():
+        return run_path
+
+    runs_root = PROJECT_ROOT / 'runs'
+    available = []
+    if runs_root.exists():
+        available = sorted(
+            str(path.relative_to(PROJECT_ROOT))
+            for path in runs_root.glob('*/top_genomes.pkl')
+        )
+
+    hint = '\n'.join(f'  - {item}' for item in available) or '  none found'
+
+    raise FileNotFoundError(
+        f'Missing {top_genomes_path}\n\n'
+        'Build the teacher dataset from a run directory that contains top_genomes.pkl.\n'
+        'Examples:\n'
+        '  python experiments/build_teacher_dataset.py --run-dir runs/latest\n'
+        '  python experiments/train_recurrent_neat.py --output-dir runs/seed_42\n'
+        '  python experiments/build_teacher_dataset.py --run-dir runs/seed_42\n\n'
+        f'Available top_genomes files:\n{hint}'
+    )
+
+
 def run(args):
     set_global_seed(args.seed)
-    run_path = PROJECT_ROOT / args.run_dir
+    run_path = resolve_run_path(args.run_dir)
     config = load_config()
 
     summary = build_teacher_dataset(

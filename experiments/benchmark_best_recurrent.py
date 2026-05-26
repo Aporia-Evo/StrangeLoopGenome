@@ -1,0 +1,178 @@
+from pathlib import Path
+import csv
+import json
+import pickle
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+import neat
+import numpy as np
+
+from slg.agents.oracle import greedy_action, random_action
+from slg.envs.gridworld import GridWorld
+
+
+def load_config():
+    config_path = PROJECT_ROOT / 'slg' / 'evolution' / 'config-recurrent'
+
+    return neat.Config(
+        neat.DefaultGenome,
+        neat.DefaultReproduction,
+        neat.DefaultSpeciesSet,
+        neat.DefaultStagnation,
+        str(config_path),
+    )
+
+
+def load_best_genome():
+    genome_path = PROJECT_ROOT / 'runs' / 'latest' / 'best_genome.pkl'
+
+    if not genome_path.exists():
+        raise FileNotFoundError(
+            'Missing runs/latest/best_genome.pkl. Run train_recurrent_neat.py first.'
+        )
+
+    with open(genome_path, 'rb') as f:
+        return pickle.load(f)
+
+
+def run_episode(policy_fn, seed, size=8, max_steps=96):
+    env = GridWorld(size=size, max_steps=max_steps, seed=seed)
+    obs = env.reset()
+    done = False
+    steps = 0
+
+    shaped_reward = 0.0
+
+    while not done:
+        action = int(policy_fn(obs))
+        obs, reward, done, info = env.step(action)
+        shaped_reward += reward
+        steps += 1
+
+    foods = int(info['foods_collected'])
+    wall_hits = int(info['wall_hits'])
+    energy = float(info['energy'])
+    total_progress = float(info.get('total_progress', 0.0))
+
+    sparse_score = foods - 0.05 * wall_hits
+    steps_per_food = steps / max(1, foods)
+
+    return {
+        'seed': seed,
+        'foods': foods,
+        'wall_hits': wall_hits,
+        'energy': energy,
+        'steps': steps,
+        'steps_per_food': steps_per_food,
+        'sparse_score': sparse_score,
+        'shaped_reward': shaped_reward,
+        'total_progress': total_progress,
+    }
+
+
+def summarize(rows):
+    keys = [
+        'foods',
+        'wall_hits',
+        'energy',
+        'steps',
+        'steps_per_food',
+        'sparse_score',
+        'shaped_reward',
+        'total_progress',
+    ]
+
+    summary = {}
+    for key in keys:
+        values = np.array([row[key] for row in rows], dtype=float)
+        summary[key] = {
+            'mean': float(values.mean()),
+            'std': float(values.std()),
+            'min': float(values.min()),
+            'max': float(values.max()),
+        }
+
+    return summary
+
+
+def make_neat_policy(genome, config):
+    net = neat.nn.RecurrentNetwork.create(genome, config)
+
+    def policy(obs):
+        output = net.activate(obs)
+        return int(np.argmax(output))
+
+    return policy
+
+
+def benchmark(num_seeds=100):
+    config = load_config()
+    genome = load_best_genome()
+
+    rng = np.random.default_rng(0)
+
+    policies = {
+        'neat_best': make_neat_policy(genome, config),
+        'greedy_oracle': greedy_action,
+        'random': lambda obs: random_action(rng),
+    }
+
+    output_dir = PROJECT_ROOT / 'runs' / 'latest'
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    all_rows = []
+    summaries = {}
+
+    for policy_name, policy_fn in policies.items():
+        rows = []
+        for seed in range(num_seeds):
+            row = run_episode(policy_fn, seed=seed)
+            row['policy'] = policy_name
+            rows.append(row)
+            all_rows.append(row)
+
+        summaries[policy_name] = summarize(rows)
+
+    csv_path = output_dir / 'benchmark_sparse.csv'
+    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                'policy',
+                'seed',
+                'foods',
+                'wall_hits',
+                'energy',
+                'steps',
+                'steps_per_food',
+                'sparse_score',
+                'shaped_reward',
+                'total_progress',
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(all_rows)
+
+    json_path = output_dir / 'benchmark_summary.json'
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(summaries, f, indent=2)
+
+    print('\nSparse benchmark over', num_seeds, 'seeds')
+    for policy_name, summary in summaries.items():
+        print(f'\nPolicy: {policy_name}')
+        print(f"  foods:          {summary['foods']['mean']:.3f} ± {summary['foods']['std']:.3f}")
+        print(f"  wall_hits:      {summary['wall_hits']['mean']:.3f} ± {summary['wall_hits']['std']:.3f}")
+        print(f"  steps_per_food: {summary['steps_per_food']['mean']:.3f} ± {summary['steps_per_food']['std']:.3f}")
+        print(f"  sparse_score:   {summary['sparse_score']['mean']:.3f} ± {summary['sparse_score']['std']:.3f}")
+        print(f"  shaped_reward:  {summary['shaped_reward']['mean']:.3f} ± {summary['shaped_reward']['std']:.3f}")
+
+    print('\nSaved:')
+    print(csv_path)
+    print(json_path)
+
+
+if __name__ == '__main__':
+    benchmark(num_seeds=100)

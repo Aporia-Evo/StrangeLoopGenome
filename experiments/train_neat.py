@@ -14,7 +14,7 @@ def eval_genomes(genomes, config):
         genome.fitness = evaluate_genome(genome, config)
 
 
-def run():
+def run(generations=20):
     config_path = PROJECT_ROOT / 'slg' / 'evolution' / 'config-feedforward'
 
     config = neat.Config(
@@ -31,10 +31,16 @@ def run():
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    winner = population.run(eval_genomes, 20)
+    final_winner = population.run(eval_genomes, generations)
+    best_overall = stats.best_genome()
 
-    print('\nBest genome:\n')
-    print(winner)
+    print('\nFinal generation winner:\n')
+    print(final_winner)
+
+    print('\nBest genome over all generations:\n')
+    print(best_overall)
+
+    return best_overall
 
 
 if __name__ == '__main__':

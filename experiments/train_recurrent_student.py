@@ -10,6 +10,25 @@ from slg.distill.recurrent_student import RecurrentDistillConfig, train_recurren
 from slg.utils.reproducibility import set_global_seed
 
 
+def require_dataset(run_path, dataset_name):
+    dataset_path = run_path / dataset_name
+    if dataset_path.exists():
+        return dataset_path
+
+    available = sorted(p.name for p in run_path.glob('*.npz')) if run_path.exists() else []
+    available_text = '\n'.join(f'  - {name}' for name in available) or '  none found'
+
+    raise FileNotFoundError(
+        f'Missing dataset: {dataset_path}\n\n'
+        'Teacher datasets are local run artifacts and are not stored in git.\n'
+        'Build one first, for example:\n\n'
+        '  python experiments/build_teacher_dataset.py --run-dir runs/latest '
+        '--output-name teacher_top1_clean.npz --num-genomes 1 '
+        '--seeds-per-genome 200 --min-foods 10 --max-wall-hits 3 --seed 2000\n\n'
+        f'Available .npz files in {run_path}:\n{available_text}'
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run-dir', default='runs/latest')
@@ -26,6 +45,7 @@ def main():
 
     set_global_seed(args.seed)
     run_path = PROJECT_ROOT / args.run_dir
+    dataset_path = require_dataset(run_path, args.dataset_name)
 
     config = RecurrentDistillConfig(
         hidden_dim=args.hidden_dim,
@@ -37,7 +57,7 @@ def main():
     )
 
     _, history = train_recurrent_student(
-        dataset_path=run_path / args.dataset_name,
+        dataset_path=dataset_path,
         output_path=run_path / args.output_name,
         config=config,
         seed=args.seed,

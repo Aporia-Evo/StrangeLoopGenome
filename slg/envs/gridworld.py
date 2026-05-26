@@ -28,14 +28,20 @@ class GridWorld:
             if not any(np.array_equal(pos, f) for f in forbidden):
                 return pos
 
+    def _distance_to_food(self):
+        return np.linalg.norm(self.food_pos - self.agent_pos, ord=1)
+
     def reset(self):
         self.steps = 0
         self.agent_energy = 1.0
         self.wall_hits = 0
         self.foods_collected = 0
+        self.no_progress_steps = 0
+        self.total_progress = 0.0
 
         self.agent_pos = self._sample_empty_pos()
         self.food_pos = self._sample_empty_pos(forbidden=[self.agent_pos])
+        self.prev_distance = self._distance_to_food()
 
         return self.observe()
 
@@ -57,6 +63,8 @@ class GridWorld:
     def step(self, action):
         self.steps += 1
 
+        prev_distance = self._distance_to_food()
+
         dx, dy = self.ACTIONS[int(action)]
         proposed_pos = self.agent_pos + np.array([dx, dy])
 
@@ -75,8 +83,16 @@ class GridWorld:
         wall_cost = 0.03 if hit_wall else 0.0
         self.agent_energy -= move_cost + wall_cost
 
-        distance = np.linalg.norm(self.food_pos - self.agent_pos, ord=1)
-        reward = -0.01 * distance
+        distance = self._distance_to_food()
+        progress = prev_distance - distance
+        self.total_progress += progress
+
+        if progress <= 0:
+            self.no_progress_steps += 1
+        else:
+            self.no_progress_steps = 0
+
+        reward = -0.005 * distance + 0.04 * progress
 
         reached_food = np.array_equal(self.agent_pos, self.food_pos)
 
@@ -85,7 +101,11 @@ class GridWorld:
             reward += 1.0
             self.agent_energy = min(1.0, self.agent_energy + 0.25)
             self.food_pos = self._sample_empty_pos(forbidden=[self.agent_pos])
-            distance = np.linalg.norm(self.food_pos - self.agent_pos, ord=1)
+            distance = self._distance_to_food()
+            self.prev_distance = distance
+            self.no_progress_steps = 0
+        else:
+            self.prev_distance = distance
 
         done = self.steps >= self.max_steps or self.agent_energy <= 0.0
 
@@ -96,4 +116,7 @@ class GridWorld:
             'wall_hits': self.wall_hits,
             'reached_food': reached_food,
             'foods_collected': self.foods_collected,
+            'progress': progress,
+            'total_progress': self.total_progress,
+            'no_progress_steps': self.no_progress_steps,
         }

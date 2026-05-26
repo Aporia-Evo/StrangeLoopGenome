@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 import csv
 import json
 import pickle
@@ -12,6 +13,7 @@ import numpy as np
 
 from slg.agents.oracle import greedy_action, random_action
 from slg.envs.gridworld import GridWorld
+from slg.utils.reproducibility import save_run_config, set_global_seed
 
 
 def load_config():
@@ -26,12 +28,12 @@ def load_config():
     )
 
 
-def load_best_genome():
-    genome_path = PROJECT_ROOT / 'runs' / 'latest' / 'best_genome.pkl'
+def load_best_genome(run_dir):
+    genome_path = Path(run_dir) / 'best_genome.pkl'
 
     if not genome_path.exists():
         raise FileNotFoundError(
-            'Missing runs/latest/best_genome.pkl. Run train_recurrent_neat.py first.'
+            f'Missing {genome_path}. Run train_recurrent_neat.py first.'
         )
 
     with open(genome_path, 'rb') as f:
@@ -108,11 +110,14 @@ def make_neat_policy(genome, config):
     return policy
 
 
-def benchmark(num_seeds=100):
-    config = load_config()
-    genome = load_best_genome()
+def benchmark(num_seeds=100, seed=0, run_dir='runs/latest'):
+    set_global_seed(seed)
 
-    rng = np.random.default_rng(0)
+    run_path = PROJECT_ROOT / run_dir
+    config = load_config()
+    genome = load_best_genome(run_path)
+
+    rng = np.random.default_rng(seed)
 
     policies = {
         'neat_best': make_neat_policy(genome, config),
@@ -120,23 +125,32 @@ def benchmark(num_seeds=100):
         'random': lambda obs: random_action(rng),
     }
 
-    output_dir = PROJECT_ROOT / 'runs' / 'latest'
-    output_dir.mkdir(parents=True, exist_ok=True)
+    run_path.mkdir(parents=True, exist_ok=True)
+
+    save_run_config(
+        run_path,
+        {
+            'script': 'benchmark_best_recurrent.py',
+            'num_seeds': num_seeds,
+            'seed': seed,
+            'run_dir': str(run_path),
+        },
+    )
 
     all_rows = []
     summaries = {}
 
     for policy_name, policy_fn in policies.items():
         rows = []
-        for seed in range(num_seeds):
-            row = run_episode(policy_fn, seed=seed)
+        for episode_seed in range(num_seeds):
+            row = run_episode(policy_fn, seed=episode_seed)
             row['policy'] = policy_name
             rows.append(row)
             all_rows.append(row)
 
         summaries[policy_name] = summarize(rows)
 
-    csv_path = output_dir / 'benchmark_sparse.csv'
+    csv_path = run_path / 'benchmark_sparse.csv'
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(
             f,
@@ -156,7 +170,7 @@ def benchmark(num_seeds=100):
         writer.writeheader()
         writer.writerows(all_rows)
 
-    json_path = output_dir / 'benchmark_summary.json'
+    json_path = run_path / 'benchmark_summary.json'
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(summaries, f, indent=2)
 
@@ -174,5 +188,18 @@ def benchmark(num_seeds=100):
     print(json_path)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num-seeds', type=int, default=100)
+    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--run-dir', type=str, default='runs/latest')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    benchmark(num_seeds=100)
+    args = parse_args()
+    benchmark(
+        num_seeds=args.num_seeds,
+        seed=args.seed,
+        run_dir=args.run_dir,
+    )

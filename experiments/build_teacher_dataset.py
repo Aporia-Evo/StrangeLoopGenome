@@ -63,6 +63,8 @@ def run(args):
         num_genomes=args.num_genomes,
         seeds_per_genome=args.seeds_per_genome,
         seed_offset=args.seed,
+        min_foods=args.min_foods,
+        max_wall_hits=args.max_wall_hits,
     )
 
     summary_path = run_path / 'teacher_dataset_summary.json'
@@ -80,6 +82,8 @@ def parse_args():
     parser.add_argument('--output-name', type=str, default='teacher_dataset.npz')
     parser.add_argument('--num-genomes', type=int, default=5)
     parser.add_argument('--seeds-per-genome', type=int, default=50)
+    parser.add_argument('--min-foods', type=int, default=0)
+    parser.add_argument('--max-wall-hits', type=int, default=None)
     parser.add_argument('--seed', type=int, default=0)
     return parser.parse_args()
 

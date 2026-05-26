@@ -12,7 +12,13 @@ from slg.evolution.eval_recurrent_genome import evaluate_recurrent_genome
 
 def eval_genomes(genomes, config):
     for genome_id, genome in genomes:
-        genome.fitness = evaluate_recurrent_genome(genome, config)
+        details = evaluate_recurrent_genome(
+            genome,
+            config,
+            return_details=True,
+        )
+        genome.fitness = details['fitness']
+        genome.slg_metrics = details
 
 
 def run(generations=40):

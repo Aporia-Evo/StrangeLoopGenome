@@ -17,8 +17,22 @@ current_generation = 0
 def eval_genomes(genomes, config):
     global current_generation
 
+    evaluated_population = {}
+
     for genome_id, genome in genomes:
         genome.fitness = evaluate_recurrent_genome(genome, config)
+        evaluated_population[genome_id] = genome
+
+    best = archive.update(current_generation, evaluated_population)
+
+    if best is not None:
+        print(
+            f"\n[Archive] Best so far | "
+            f"gen={best.generation} | "
+            f"fitness={best.fitness:.3f} | "
+            f"nodes={best.nodes} | "
+            f"connections={best.connections}"
+        )
 
 
 def run(generations=40):
@@ -42,20 +56,7 @@ def run(generations=40):
 
     for generation in range(generations):
         current_generation = generation
-
         population.run(eval_genomes, 1)
-
-        archive.update(generation, population.population)
-
-        best = archive.best_record
-
-        print(
-            f"\n[Archive] Best so far | "
-            f"gen={best.generation} | "
-            f"fitness={best.fitness:.3f} | "
-            f"nodes={best.nodes} | "
-            f"connections={best.connections}"
-        )
 
     summary = archive.save()
 

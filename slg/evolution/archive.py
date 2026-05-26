@@ -1,3 +1,4 @@
+import copy
 import json
 import pickle
 from dataclasses import dataclass, asdict
@@ -25,9 +26,18 @@ class GenomeArchive:
         self.best_genome = None
 
     def update(self, generation, population):
+        evaluated = {
+            genome_id: genome
+            for genome_id, genome in population.items()
+            if genome.fitness is not None
+        }
+
+        if not evaluated:
+            return None
+
         ranked = sorted(
-            population.items(),
-            key=lambda item: item[1].fitness if item[1].fitness is not None else -1e18,
+            evaluated.items(),
+            key=lambda item: item[1].fitness,
             reverse=True,
         )
 
@@ -42,18 +52,22 @@ class GenomeArchive:
                     1 for conn in genome.connections.values() if conn.enabled
                 ),
             )
+            genome_copy = copy.deepcopy(genome)
+
             self.records.append(record)
-            self.genomes.append((record, genome))
+            self.genomes.append((record, genome_copy))
 
             if self.best_record is None or record.fitness > self.best_record.fitness:
                 self.best_record = record
-                self.best_genome = genome
+                self.best_genome = genome_copy
 
         self.genomes = sorted(
             self.genomes,
             key=lambda item: item[0].fitness,
             reverse=True,
         )[: self.top_k]
+
+        return self.best_record
 
     def save(self):
         if self.best_genome is not None:

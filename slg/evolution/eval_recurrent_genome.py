@@ -10,6 +10,8 @@ def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
     total_energy_score = 0.0
     total_foods = 0
     total_wall_hits = 0
+    total_no_progress = 0
+    total_progress = 0.0
 
     for episode in range(episodes):
         net = neat.nn.RecurrentNetwork.create(genome, config)
@@ -53,14 +55,23 @@ def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
         total_energy_score += energy
         total_foods += info['foods_collected']
         total_wall_hits += info['wall_hits']
+        total_no_progress += info['no_progress_steps']
+        total_progress += info['total_progress']
 
     avg_reward = total_reward / episodes
     avg_energy = total_energy_score / episodes
     avg_foods = total_foods / episodes
     avg_wall_hits = total_wall_hits / episodes
+    avg_no_progress = total_no_progress / episodes
+    avg_progress = total_progress / episodes
 
     task_score = avg_reward + 2.0 * avg_foods
-    fitness = task_score - 0.35 * avg_energy - 0.03 * avg_wall_hits
+    fitness = (
+        task_score
+        - 0.35 * avg_energy
+        - 0.03 * avg_wall_hits
+        - 0.01 * avg_no_progress
+    )
 
     if return_details:
         return {
@@ -69,6 +80,8 @@ def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
             'avg_energy': float(avg_energy),
             'avg_foods': float(avg_foods),
             'avg_wall_hits': float(avg_wall_hits),
+            'avg_no_progress': float(avg_no_progress),
+            'avg_progress': float(avg_progress),
             'task_score': float(task_score),
         }
 

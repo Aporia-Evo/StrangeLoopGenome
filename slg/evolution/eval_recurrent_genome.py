@@ -5,9 +5,11 @@ from slg.envs.gridworld import GridWorld
 from slg.energy.energy import total_energy
 
 
-def evaluate_recurrent_genome(genome, config, episodes=5):
+def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
     total_reward = 0.0
     total_energy_score = 0.0
+    total_foods = 0
+    total_wall_hits = 0
 
     for episode in range(episodes):
         net = neat.nn.RecurrentNetwork.create(genome, config)
@@ -45,14 +47,29 @@ def evaluate_recurrent_genome(genome, config, episodes=5):
             activations=activations,
         )
 
-        energy += 0.05 * temporal_variance
-        energy += 0.02 * info['wall_hits']
+        energy += 0.01 * temporal_variance
+        energy += 0.005 * info['wall_hits']
 
         total_energy_score += energy
+        total_foods += info['foods_collected']
+        total_wall_hits += info['wall_hits']
 
     avg_reward = total_reward / episodes
     avg_energy = total_energy_score / episodes
+    avg_foods = total_foods / episodes
+    avg_wall_hits = total_wall_hits / episodes
 
-    fitness = avg_reward - avg_energy
+    task_score = avg_reward + 2.0 * avg_foods
+    fitness = task_score - 0.35 * avg_energy
 
-    return fitness
+    if return_details:
+        return {
+            'fitness': float(fitness),
+            'avg_reward': float(avg_reward),
+            'avg_energy': float(avg_energy),
+            'avg_foods': float(avg_foods),
+            'avg_wall_hits': float(avg_wall_hits),
+            'task_score': float(task_score),
+        }
+
+    return float(fitness)

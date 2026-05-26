@@ -1,4 +1,8 @@
 from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 import neat
 
@@ -11,12 +15,7 @@ def eval_genomes(genomes, config):
 
 
 def run():
-    config_path = (
-        Path(__file__).resolve().parent.parent
-        / 'slg'
-        / 'evolution'
-        / 'config-feedforward'
-    )
+    config_path = PROJECT_ROOT / 'slg' / 'evolution' / 'config-feedforward'
 
     config = neat.Config(
         neat.DefaultGenome,

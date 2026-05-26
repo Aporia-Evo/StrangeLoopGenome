@@ -1,7 +1,7 @@
 import copy
 import json
 import pickle
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 
 import neat
@@ -15,6 +15,7 @@ class GenomeRecord:
     nodes: int
     connections: int
     enabled_connections: int
+    metrics: dict = field(default_factory=dict)
 
 
 class GenomeArchive:
@@ -63,6 +64,7 @@ class GenomeArchive:
                 enabled_connections=sum(
                     1 for conn in genome.connections.values() if conn.enabled
                 ),
+                metrics=getattr(genome, 'slg_metrics', {}),
             )
             genome_copy = copy.deepcopy(genome)
 
@@ -121,11 +123,14 @@ class ArchiveReporter(neat.reporting.BaseReporter):
         best = self.archive.update(self.generation, population)
 
         if best is not None:
+            metrics = best.metrics or {}
             print(
                 f"\n[Archive] Best so far | "
                 f"gen={best.generation} | "
                 f"fitness={best.fitness:.3f} | "
+                f"foods={metrics.get('avg_foods', 0.0):.2f} | "
+                f"reward={metrics.get('avg_reward', 0.0):.3f} | "
+                f"energy={metrics.get('avg_energy', 0.0):.3f} | "
                 f"nodes={best.nodes} | "
-                f"connections={best.connections} | "
                 f"enabled={best.enabled_connections}"
             )

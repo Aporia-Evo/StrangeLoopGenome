@@ -48,7 +48,7 @@ def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
         )
 
         energy += 0.01 * temporal_variance
-        energy += 0.005 * info['wall_hits']
+        energy += 0.01 * info['wall_hits']
 
         total_energy_score += energy
         total_foods += info['foods_collected']
@@ -60,7 +60,7 @@ def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
     avg_wall_hits = total_wall_hits / episodes
 
     task_score = avg_reward + 2.0 * avg_foods
-    fitness = task_score - 0.35 * avg_energy
+    fitness = task_score - 0.35 * avg_energy - 0.03 * avg_wall_hits
 
     if return_details:
         return {

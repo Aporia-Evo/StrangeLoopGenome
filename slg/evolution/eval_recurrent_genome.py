@@ -6,13 +6,13 @@ from slg.energy.energy import total_energy
 
 
 def evaluate_recurrent_genome(genome, config, episodes=5):
-    net = neat.nn.RecurrentNetwork.create(genome, config)
-
     total_reward = 0.0
     total_energy_score = 0.0
 
     for episode in range(episodes):
-        env = GridWorld(size=8, max_steps=96)
+        net = neat.nn.RecurrentNetwork.create(genome, config)
+
+        env = GridWorld(size=8, max_steps=96, seed=episode)
 
         obs = env.reset()
         done = False
@@ -31,7 +31,6 @@ def evaluate_recurrent_genome(genome, config, episodes=5):
             total_reward += reward
 
         action_entropy = len(set(actions)) / 5.0
-
         temporal_variance = np.var(activations) if activations else 0.0
 
         energy = total_energy(
@@ -47,6 +46,7 @@ def evaluate_recurrent_genome(genome, config, episodes=5):
         )
 
         energy += 0.05 * temporal_variance
+        energy += 0.02 * info['wall_hits']
 
         total_energy_score += energy
 

@@ -4,6 +4,8 @@ import pickle
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
+import neat
+
 
 @dataclass
 class GenomeRecord:
@@ -24,6 +26,16 @@ class GenomeArchive:
         self.genomes = []
         self.best_record = None
         self.best_genome = None
+
+    def _signature(self, genome):
+        enabled = tuple(
+            sorted(
+                key
+                for key, conn in genome.connections.items()
+                if conn.enabled
+            )
+        )
+        return (tuple(sorted(genome.nodes.keys())), enabled)
 
     def update(self, generation, population):
         evaluated = {
@@ -61,11 +73,20 @@ class GenomeArchive:
                 self.best_record = record
                 self.best_genome = genome_copy
 
-        self.genomes = sorted(
+        unique = {}
+        for record, genome in sorted(
             self.genomes,
             key=lambda item: item[0].fitness,
             reverse=True,
-        )[: self.top_k]
+        ):
+            signature = self._signature(genome)
+            if signature not in unique:
+                unique[signature] = (record, genome)
+
+            if len(unique) >= self.top_k:
+                break
+
+        self.genomes = list(unique.values())
 
         return self.best_record
 
@@ -86,3 +107,25 @@ class GenomeArchive:
             json.dump(summary, f, indent=2)
 
         return summary
+
+
+class ArchiveReporter(neat.reporting.BaseReporter):
+    def __init__(self, archive):
+        self.archive = archive
+        self.generation = 0
+
+    def start_generation(self, generation):
+        self.generation = generation
+
+    def post_evaluate(self, config, population, species, best_genome):
+        best = self.archive.update(self.generation, population)
+
+        if best is not None:
+            print(
+                f"\n[Archive] Best so far | "
+                f"gen={best.generation} | "
+                f"fitness={best.fitness:.3f} | "
+                f"nodes={best.nodes} | "
+                f"connections={best.connections} | "
+                f"enabled={best.enabled_connections}"
+            )

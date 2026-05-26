@@ -6,15 +6,24 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 import neat
 
+from slg.evolution.archive import GenomeArchive
 from slg.evolution.eval_recurrent_genome import evaluate_recurrent_genome
 
 
+archive = GenomeArchive(output_dir='runs/latest', top_k=10)
+current_generation = 0
+
+
 def eval_genomes(genomes, config):
+    global current_generation
+
     for genome_id, genome in genomes:
         genome.fitness = evaluate_recurrent_genome(genome, config)
 
 
 def run(generations=40):
+    global current_generation
+
     config_path = PROJECT_ROOT / 'slg' / 'evolution' / 'config-recurrent'
 
     config = neat.Config(
@@ -31,16 +40,29 @@ def run(generations=40):
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    final_winner = population.run(eval_genomes, generations)
-    best_overall = stats.best_genome()
+    for generation in range(generations):
+        current_generation = generation
 
-    print('\nFinal generation winner:\n')
-    print(final_winner)
+        population.run(eval_genomes, 1)
 
-    print('\nBest genome over all generations:\n')
-    print(best_overall)
+        archive.update(generation, population.population)
 
-    return best_overall
+        best = archive.best_record
+
+        print(
+            f"\n[Archive] Best so far | "
+            f"gen={best.generation} | "
+            f"fitness={best.fitness:.3f} | "
+            f"nodes={best.nodes} | "
+            f"connections={best.connections}"
+        )
+
+    summary = archive.save()
+
+    print('\nArchive summary saved to runs/latest/')
+    print(summary)
+
+    return archive.best_genome
 
 
 if __name__ == '__main__':

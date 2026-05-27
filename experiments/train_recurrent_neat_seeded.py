@@ -12,6 +12,10 @@ import neat
 
 from slg.evolution.archive import ArchiveReporter, GenomeArchive
 from slg.evolution.eval_recurrent_genome import evaluate_recurrent_genome
+from slg.evolution.eval_recurrent_with_student_prior import (
+    StudentPrior,
+    evaluate_recurrent_genome_with_student_prior,
+)
 from slg.utils.reproducibility import save_run_config, set_global_seed
 
 
@@ -54,14 +58,29 @@ def make_population(seed_genomes, config, pop_size, elite_copies, mutation_passe
     return pop
 
 
+student_prior = None
+prior_weight = 0.0
+
+
 def eval_genomes(genomes, config):
     for genome_id, genome in genomes:
-        details = evaluate_recurrent_genome(genome, config, return_details=True)
+        if student_prior is not None:
+            details = evaluate_recurrent_genome_with_student_prior(
+                genome,
+                config,
+                student_prior=student_prior,
+                prior_weight=prior_weight,
+                return_details=True,
+            )
+        else:
+            details = evaluate_recurrent_genome(genome, config, return_details=True)
         genome.fitness = details['fitness']
         genome.slg_metrics = details
 
 
 def main():
+    global student_prior, prior_weight
+
     p = argparse.ArgumentParser()
     p.add_argument('--seed-genomes', required=True)
     p.add_argument('--generations', type=int, default=40)
@@ -70,6 +89,8 @@ def main():
     p.add_argument('--top-k', type=int, default=10)
     p.add_argument('--elite-copies', type=int, default=4)
     p.add_argument('--mutation-passes', type=int, default=1)
+    p.add_argument('--student-path', default=None)
+    p.add_argument('--prior-weight', type=float, default=0.0)
     args = p.parse_args()
 
     set_global_seed(args.seed)
@@ -77,6 +98,10 @@ def main():
     seed_path = PROJECT_ROOT / args.seed_genomes
     output_path = PROJECT_ROOT / args.output_dir
     seeds = load_seed_genomes(seed_path)
+
+    if args.student_path:
+        student_prior = StudentPrior(PROJECT_ROOT / args.student_path)
+        prior_weight = args.prior_weight
 
     save_run_config(output_path, {
         'script': 'train_recurrent_neat_seeded.py',
@@ -88,6 +113,8 @@ def main():
         'top_k': args.top_k,
         'elite_copies': args.elite_copies,
         'mutation_passes': args.mutation_passes,
+        'student_path': str(PROJECT_ROOT / args.student_path) if args.student_path else None,
+        'prior_weight': args.prior_weight,
         'config_path': str(config_path),
     })
 

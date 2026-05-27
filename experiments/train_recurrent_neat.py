@@ -12,18 +12,25 @@ from slg.evolution.eval_recurrent_genome import evaluate_recurrent_genome
 from slg.utils.reproducibility import save_run_config, set_global_seed
 
 
+energy_weight = 0.35
+
+
 def eval_genomes(genomes, config):
     for genome_id, genome in genomes:
         details = evaluate_recurrent_genome(
             genome,
             config,
             return_details=True,
+            energy_weight=energy_weight,
         )
         genome.fitness = details['fitness']
         genome.slg_metrics = details
 
 
-def run(generations=40, seed=1, output_dir='runs/latest', top_k=10):
+def run(generations=40, seed=1, output_dir='runs/latest', top_k=10, energy_weight_value=0.35):
+    global energy_weight
+    energy_weight = energy_weight_value
+
     set_global_seed(seed)
 
     config_path = PROJECT_ROOT / 'slg' / 'evolution' / 'config-recurrent'
@@ -37,6 +44,7 @@ def run(generations=40, seed=1, output_dir='runs/latest', top_k=10):
             'seed': seed,
             'output_dir': str(output_path),
             'top_k': top_k,
+            'energy_weight': energy_weight,
             'config_path': str(config_path),
         },
     )
@@ -74,6 +82,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--output-dir', type=str, default='runs/latest')
     parser.add_argument('--top-k', type=int, default=10)
+    parser.add_argument('--energy-weight', type=float, default=0.35)
     return parser.parse_args()
 
 
@@ -84,4 +93,5 @@ if __name__ == '__main__':
         seed=args.seed,
         output_dir=args.output_dir,
         top_k=args.top_k,
+        energy_weight_value=args.energy_weight,
     )

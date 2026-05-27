@@ -5,7 +5,7 @@ from slg.envs.gridworld import GridWorld
 from slg.energy.energy import total_energy
 
 
-def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
+def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False, energy_weight=0.35):
     total_reward = 0.0
     total_energy_score = 0.0
     total_foods = 0
@@ -68,7 +68,7 @@ def evaluate_recurrent_genome(genome, config, episodes=5, return_details=False):
     task_score = avg_reward + 2.0 * avg_foods
     fitness = (
         task_score
-        - 0.35 * avg_energy
+        - energy_weight * avg_energy
         - 0.03 * avg_wall_hits
         - 0.01 * avg_no_progress
     )

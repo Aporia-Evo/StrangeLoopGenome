@@ -1,11 +1,47 @@
+.venv/
 __pycache__/
-*.pyc
-.ipynb_checkpoints/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage*.json
+coverage*.xml
+coverage*.info
+*.pyc
+*.pyo
+*.pyd
 
-runs/
-*.pkl
-*.csv
-*.json
+# Build outputs
+dist/
+build/
+*.egg-info/
 
+# Local/editor noise
+*.log
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
 .DS_Store
+.ipynb_checkpoints/
+
+# Raw local experiment runs can be large/noisy.
+# Use experiments/export_run_artifacts.py to save curated runs into artifacts/.
+runs/
+exports/
+tmp/
+
+# Keep curated artifacts trackable.
+!artifacts/
+!artifacts/**

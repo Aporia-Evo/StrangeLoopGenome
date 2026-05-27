@@ -621,6 +621,100 @@ training distribution.
 
 ---
 
+## Milestone 6: Energy-weight ablation
+
+All previous milestones used the original hardcoded energy coefficient
+of 0.35 in the fitness formula:
+
+```text
+fitness = task_score
+        - 0.35 * avg_energy
+        - 0.03 * avg_wall_hits
+        - 0.01 * avg_no_progress
+```
+
+The motivating question for this milestone: is the energy term doing
+real work, or is it noise that the task-reward and progress shaping
+would discover on their own?
+
+`evaluate_recurrent_genome` was parameterised on `energy_weight` and
+`train_recurrent_neat.py` exposed it as `--energy-weight`. Defaults
+match the previous behaviour, so earlier milestones reproduce
+unchanged.
+
+Ablation grid: 3 training seeds × 4 weights, 60 generations each.
+Mean foods per episode on the sparse benchmark (100 seeds,
+10000..10099):
+
+```text
+                  w=0.00   w=0.05   w=0.15   w=0.35
+seed=1             2.85    14.78    17.74    16.10
+seed=2             6.24     5.41     4.06     3.37
+seed=3             3.05     8.95    15.11     9.22
+
+mean across seeds  4.05     9.71    12.30     9.56
+```
+
+### What's actually happening
+
+1. **Energy is not noise.** At weight 0, two of three seeds collapse
+   to near-random performance (2.85 and 3.05 foods). The energy
+   term is genuinely smoothing the low-fitness search landscape
+   the way the original framing claimed.
+2. **The original 0.35 was over-tuned.** Across seeds, the best
+   mean (12.30) occurs at weight 0.15, ~30% better than the
+   previous default of 0.35 (9.56). The single best run (17.74,
+   seed=1) is also at 0.15.
+3. **The relationship is non-monotonic and seed-dependent.** At
+   the productive seeds (1, 3) the curve goes up then down,
+   peaking near 0.15. At the stuck seed (2) the curve is
+   monotonically decreasing - more energy regularisation is just
+   more pressure on a population that hasn't found food yet.
+
+### Interpretation
+
+The energy term in this codebase is doing what the framing always
+claimed: shaping the search landscape so evolution has a gradient
+when task reward alone is sparse. But it does so through fitness
+coupling rather than through dynamics, and the coupling is crude:
+
+- A single global coefficient cannot smooth low-fitness regions
+  without also over-regularising high-fitness solutions.
+- The same coefficient that helps a productive seed (1) hurts a
+  stuck seed (2). There is no way for the fitness-side coupling
+  to detect which regime the population is in.
+- The optimal weight (0.15) is closer to "weak prior" than to
+  "strong regulariser", suggesting the right role for energy in
+  this setup is closer to "background smoothing" than "primary
+  fitness component".
+
+Working interpretation:
+
+```text
+Energy as a fitness penalty works as a search-space smoother,
+but only over a narrow window of coefficients, and the window
+moves with the seed. This is the signature of a crude coupling -
+the right idea wired up through the wrong knob.
+
+A cleaner implementation would couple energy to dynamics
+(relaxation during evaluation, free-energy minimisation in the
+recurrent forward pass) rather than to fitness. Empirically, the
+current setup leaves ~30% performance on the table just by being
+defaulted to the wrong coefficient.
+```
+
+This milestone does not change the headline numbers in earlier
+milestones (those used the original 0.35), but it does mean:
+
+- If those experiments are re-run with energy_weight 0.15, the
+  numbers will improve noticeably for productive seeds.
+- The "energy-shaped fitness" framing in the README is empirically
+  validated as doing useful work, but the implementation is
+  not yet what the framing implies. Energy-as-dynamics is the
+  unfinished direction.
+
+---
+
 ## Reproducibility notes
 
 Earlier versions of the benchmark and teacher-collection code had two
@@ -667,16 +761,20 @@ could matter more.
 ## Next steps
 
 ```text
-1. Train with environment variation (sample grid size per episode
-   during evaluation) and see if recurrent-student-2 stays a strong
-   generalist or if a new run can beat it.
-2. Add obstacles and stochastic action failures to GridWorld and
+1. Re-run Milestones 1-5 with energy_weight=0.15 (the ablation
+   peak) to see how much of the previous headline numbers came
+   from a suboptimal default.
+2. Implement energy as inner-loop dynamics instead of fitness
+   penalty: relax the recurrent net for k inner iterations per
+   step toward an energy minimum, treat the attractor as the
+   action. This is the "energy-as-dynamics" direction the README
+   framing implied.
+3. Add obstacles and stochastic action failures to GridWorld and
    re-run the cross-environment benchmark. The greedy oracle stops
    being optimal in those worlds, so the loop has somewhere to go.
-3. Use student-2 recurrent (the actual generalist) as the prior
-   for a gen-3 evolution and re-run the cross-size benchmark.
-4. Wider multi-seed teacher-2 sweep so iteration-2 numbers are not
-   conditional on a single best-of-3 gen-2 run.
+4. Train with environment variation (sample grid size per episode
+   during evaluation) and see if recurrent-student-2 stays a strong
+   generalist or if a new run can beat it.
 5. Track performance per parameter across all teachers and students
    at every grid size.
 6. Investigate the seed=123 + feedforward-prior + seeded-reseed

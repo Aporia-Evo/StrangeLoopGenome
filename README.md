@@ -134,10 +134,17 @@ New population seed
     iteration-2 champion is brittle, recurrent students
     generalise; student-2 recurrent is the best generalist
     (worst case 15.55 foods, mean 16.40)
+[x] Energy-weight ablation (3 seeds x {0, 0.05, 0.15, 0.35}):
+    the original 0.35 default was over-tuned. Weight 0.15
+    gives the best mean (12.30 vs 9.56 foods) and the single
+    best run (17.74). Removing the energy term entirely
+    collapses two of three seeds - energy is doing real
+    search-shaping work, but through a crude coupling.
+[ ] Implement energy as inner-loop dynamics (relaxation in the
+    recurrent forward pass), not as a fitness penalty
 [ ] Add obstacles and stochastic perturbations to GridWorld
 [ ] Train with environment variation, then re-benchmark
-[ ] Wider multi-seed sweep (n>=10) to tighten the estimate
-[ ] Third loop iteration with student-2 recurrent as prior
+[ ] Re-run earlier milestones with energy_weight=0.15
 ```
 
 ## Running the current PoC

@@ -59,23 +59,21 @@ Secondary metrics:
 
 ## Milestone 1 result
 
-A recurrent NEAT agent evolved with energy/progress-shaped fitness reached roughly 85% of a greedy oracle baseline on a 100-seed sparse benchmark.
+A recurrent NEAT agent evolved with energy/progress-shaped fitness
+reached roughly 90% of a greedy oracle baseline on a 100-seed sparse
+benchmark, with benchmark seeds disjoint from training seeds and fresh
+recurrent state per episode.
 
 ```text
 Policy          Foods     Wall hits   Steps/Food   Sparse score
-NEAT best       15.18     0.62        6.43         15.15
-Greedy oracle   17.95     0.00        5.45         17.95
-Random          0.49      7.99        85.23        0.09
+NEAT best       16.10     1.25        6.06         16.04
+Greedy oracle   17.80     0.00        5.50         17.80
+Random           0.50     7.68       83.28          0.12
 ```
 
-The best evolved topology remained compact:
-
-```text
-nodes:               9
-enabled connections: 10
-benchmark seeds:     100
-oracle performance:  ~84.6%
-```
+Numbers are from the `--seed 1` training run, the best of a small
+seed sweep. The PoC is seed-sensitive — see RESULTS.md for the full
+sweep and reproducibility notes.
 
 Interpretation:
 

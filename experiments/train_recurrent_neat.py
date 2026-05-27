@@ -23,7 +23,7 @@ def eval_genomes(genomes, config):
         genome.slg_metrics = details
 
 
-def run(generations=40, seed=42, output_dir='runs/latest', top_k=10):
+def run(generations=40, seed=1, output_dir='runs/latest', top_k=10):
     set_global_seed(seed)
 
     config_path = PROJECT_ROOT / 'slg' / 'evolution' / 'config-recurrent'
@@ -71,7 +71,7 @@ def run(generations=40, seed=42, output_dir='runs/latest', top_k=10):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--generations', type=int, default=40)
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--output-dir', type=str, default='runs/latest')
     parser.add_argument('--top-k', type=int, default=10)
     return parser.parse_args()

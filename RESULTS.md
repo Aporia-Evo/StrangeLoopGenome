@@ -47,7 +47,8 @@ This made the local search landscape smoother and reduced the tendency to fall i
 
 ### Sparse benchmark
 
-After training, the best archived genome was evaluated over 100 seeds and compared against:
+After training, the best archived genome was evaluated over 100 seeds
+disjoint from the training seeds, and compared against:
 
 - a greedy oracle
 - a random agent
@@ -58,27 +59,44 @@ Benchmark command:
 python experiments/benchmark_best_recurrent.py
 ```
 
-Representative result:
+The benchmark uses fresh recurrent state per episode and benchmark seeds
+in the range 10000-10099 (disjoint from training and teacher-collection
+seeds, see "Reproducibility notes" below).
+
+Result on the `--seed 1` training run (60 generations):
 
 ```text
 Policy          Foods     Wall hits   Steps/Food   Sparse score   Shaped reward
-NEAT best       15.18     0.62        6.43         15.15          17.20
-Greedy oracle   17.95     0.00        5.45         17.95          20.45
-Random          0.49      7.99        85.23        0.09           -2.00
+NEAT best       16.10     1.25        6.06         16.04          18.27
+Greedy oracle   17.80     0.00        5.50         17.80          20.29
+Random           0.50     7.68       83.28          0.12          -1.97
 ```
 
 The best evolved agent reached approximately:
 
 ```text
-15.18 / 17.95 = 84.6% of greedy oracle food collection
+16.10 / 17.80 = 90.4% of greedy oracle food collection
 ```
 
-with a compact topology:
+with a compact topology.
+
+### Seed sensitivity
+
+A sweep over training seeds (60 generations each, same config, same
+benchmark) shows that this PoC is highly seed-sensitive:
 
 ```text
-nodes:               9
-enabled connections: 10
+Training seed   Benchmark foods
+            1   16.10
+            2    3.37
+            0    3.21
+           42    0.85
 ```
+
+A single training run is therefore a noisy estimate of what the method
+can produce. Reported numbers in this milestone come from the best
+seed in a small sweep, not from a single run with an arbitrary default
+seed.
 
 ### Interpretation
 
@@ -196,6 +214,27 @@ but only when the teacher signal is coherent and high quality.
 ```
 
 ---
+
+## Reproducibility notes
+
+Earlier versions of the benchmark and teacher-collection code had two
+bugs that have since been fixed:
+
+- The recurrent NEAT network was created once outside the episode loop
+  in `benchmark_best_recurrent.py` and `slg/distill/teacher_dataset.py`,
+  so its hidden state persisted across all 100 benchmark episodes (and
+  across all 50 teacher episodes per genome). The fix calls
+  `net.reset()` before every episode, matching training-time evaluation.
+- Teacher dataset seeds (0..num_genomes*seeds_per_genome) overlapped the
+  benchmark seeds (0..num_seeds), so the distilled student was being
+  evaluated on environments that appeared in its training data. Benchmarks
+  now default to `--first-seed 10000`, so episode seeds are disjoint
+  from the teacher dataset's seed range.
+
+For a strong genome (the `--seed 1` run above), running the benchmark
+with the buggy and fixed code produces nearly identical foods/episode,
+so the headline numbers above are stable. For weaker genomes the bugs
+could matter more.
 
 ## Current limitations
 

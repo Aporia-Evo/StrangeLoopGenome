@@ -40,14 +40,19 @@ def main():
     p.add_argument('--run-dir', default='runs/latest')
     p.add_argument('--student-name', default='recurrent_student.pt')
     p.add_argument('--num-seeds', type=int, default=100)
+    p.add_argument('--seed', type=int, default=0)
+    p.add_argument('--first-seed', type=int, default=10000)
     args = p.parse_args()
     run_path = PROJECT_ROOT / args.run_dir
     student, _, _ = load_recurrent_student(run_path / args.student_name)
-    rng = np.random.default_rng(0)
-    policies = {'recurrent_student': student, 'greedy_oracle': greedy_action, 'random': lambda obs: random_action(rng)}
+    policies = {
+        'recurrent_student': student,
+        'greedy_oracle': greedy_action,
+        'random': lambda obs, rng=np.random.default_rng(args.seed): random_action(rng),
+    }
     print('\nRecurrent student sparse benchmark')
     for name, policy in policies.items():
-        rows = [run_episode(policy, s) for s in range(args.num_seeds)]
+        rows = [run_episode(policy, args.first_seed + i) for i in range(args.num_seeds)]
         s = summarize(rows)
         print(f'\nPolicy: {name}')
         for k, (m, sd) in s.items():

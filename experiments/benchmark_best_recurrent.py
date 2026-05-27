@@ -42,6 +42,8 @@ def load_best_genome(run_dir):
 
 def run_episode(policy_fn, seed, size=8, max_steps=96):
     env = GridWorld(size=size, max_steps=max_steps, seed=seed)
+    if hasattr(policy_fn, 'reset'):
+        policy_fn.reset()
     obs = env.reset()
     done = False
     steps = 0
@@ -107,22 +109,21 @@ def make_neat_policy(genome, config):
         output = net.activate(obs)
         return int(np.argmax(output))
 
+    policy.reset = net.reset
     return policy
 
 
-def benchmark(num_seeds=100, seed=0, run_dir='runs/latest'):
+def benchmark(num_seeds=100, seed=0, run_dir='runs/latest', first_seed=10000):
     set_global_seed(seed)
 
     run_path = PROJECT_ROOT / run_dir
     config = load_config()
     genome = load_best_genome(run_path)
 
-    rng = np.random.default_rng(seed)
-
     policies = {
         'neat_best': make_neat_policy(genome, config),
         'greedy_oracle': greedy_action,
-        'random': lambda obs: random_action(rng),
+        'random': lambda obs, rng=np.random.default_rng(seed): random_action(rng),
     }
 
     run_path.mkdir(parents=True, exist_ok=True)
@@ -133,6 +134,7 @@ def benchmark(num_seeds=100, seed=0, run_dir='runs/latest'):
             'script': 'benchmark_best_recurrent.py',
             'num_seeds': num_seeds,
             'seed': seed,
+            'first_seed': first_seed,
             'run_dir': str(run_path),
         },
     )
@@ -142,7 +144,8 @@ def benchmark(num_seeds=100, seed=0, run_dir='runs/latest'):
 
     for policy_name, policy_fn in policies.items():
         rows = []
-        for episode_seed in range(num_seeds):
+        for episode_index in range(num_seeds):
+            episode_seed = first_seed + episode_index
             row = run_episode(policy_fn, seed=episode_seed)
             row['policy'] = policy_name
             rows.append(row)
@@ -193,6 +196,7 @@ def parse_args():
     parser.add_argument('--num-seeds', type=int, default=100)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--run-dir', type=str, default='runs/latest')
+    parser.add_argument('--first-seed', type=int, default=10000)
     return parser.parse_args()
 
 
@@ -202,4 +206,5 @@ if __name__ == '__main__':
         num_seeds=args.num_seeds,
         seed=args.seed,
         run_dir=args.run_dir,
+        first_seed=args.first_seed,
     )

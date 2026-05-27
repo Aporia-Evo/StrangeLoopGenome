@@ -67,20 +67,20 @@ def benchmark(args):
     run_path = PROJECT_ROOT / args.run_dir
     student_path = run_path / args.student_name
     model, _, _ = load_student(student_path)
-    rng = np.random.default_rng(args.seed)
 
     policies = {
         'student': lambda obs: model.act(obs),
         'greedy_oracle': greedy_action,
-        'random': lambda obs: random_action(rng),
+        'random': lambda obs, rng=np.random.default_rng(args.seed): random_action(rng),
     }
 
     all_rows = []
     summaries = {}
     for policy_name, policy_fn in policies.items():
         rows = []
-        for seed in range(args.num_seeds):
-            row = run_episode(policy_fn, seed=seed)
+        for episode_index in range(args.num_seeds):
+            episode_seed = args.first_seed + episode_index
+            row = run_episode(policy_fn, seed=episode_seed)
             row['policy'] = policy_name
             rows.append(row)
             all_rows.append(row)
@@ -116,6 +116,7 @@ def parse_args():
     parser.add_argument('--student-name', type=str, default='student_policy.pt')
     parser.add_argument('--num-seeds', type=int, default=100)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--first-seed', type=int, default=10000)
     return parser.parse_args()
 
 

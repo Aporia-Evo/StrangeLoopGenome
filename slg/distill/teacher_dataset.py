@@ -24,11 +24,14 @@ def make_recurrent_policy(genome, config):
         action = int(np.argmax(output))
         return action, output
 
+    policy.reset = net.reset
     return policy
 
 
 def collect_teacher_episode(policy, seed, size=8, max_steps=96):
     env = GridWorld(size=size, max_steps=max_steps, seed=seed)
+    if hasattr(policy, 'reset'):
+        policy.reset()
     obs = env.reset()
     done = False
 

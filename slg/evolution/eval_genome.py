@@ -12,7 +12,7 @@ def evaluate_genome(genome, config, episodes=3):
     total_energy_score = 0.0
 
     for episode in range(episodes):
-        env = GridWorld(size=8, max_steps=64)
+        env = GridWorld(size=8, max_steps=64, seed=episode)
 
         obs = env.reset()
         done = False

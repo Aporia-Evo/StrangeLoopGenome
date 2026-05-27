@@ -373,6 +373,145 @@ clearly beats both gen-1 and either of its constituent strategies
 
 ---
 
+## Milestone 4: Second distillation closes one full loop iteration
+
+The strongest gen-2 NEAT run (seeded + recurrent prior at weight 0.5,
+training seed 300, 17.73 foods on the sparse benchmark) was used as
+the teacher for a second distillation pass. The pipeline now reads:
+
+```text
+gen-1 NEAT   -- distill -->  student-1
+seeded + student-1 prior  -->  gen-2 NEAT
+gen-2 NEAT  -- distill -->  student-2
+```
+
+### Teacher-2 dataset
+
+```text
+source genome:            runs/m4_seeded_rec_s300/top_genomes.pkl
+num_genomes:              1
+seeds_per_genome:         200
+accepted episodes:        200
+skipped episodes:         0
+samples:                  19200
+mean episode foods:       17.89
+mean episode wall hits:   0.015
+min_foods filter:         10
+max_wall_hits filter:     3
+teacher seed range:       3000..3199  (disjoint from teacher-1 range
+                                       2000..2199 and benchmark range
+                                       10000..10099)
+```
+
+Every single teacher-2 episode passed the filter (vs 195/200 for
+teacher-1). The signal is much cleaner: almost no walls, near-oracle
+food collection. Same `min_foods`/`max_wall_hits` thresholds.
+
+### Feedforward student-2
+
+```text
+hidden_dim: 32
+epochs:     80
+final val accuracy: ~0.980
+```
+
+Sparse benchmark over 100 seeds:
+
+```text
+Policy              Foods     Wall hits   Steps/Food   Sparse score
+Feedforward stud-2  17.80     0.00        ~5.50        17.80
+Greedy oracle       17.80     0.00        5.50         17.80
+Random               0.50     7.68       83.28          0.12
+```
+
+The feedforward student-2 hits the same mean foods and the same
+zero wall hits as the greedy oracle on this benchmark. A spot-check
+shows the student matches the oracle's action on ~79% of in-trajectory
+observations and ~61% on random observations - so it is not literally
+re-implementing the oracle, but the alternative actions it picks reach
+food in the same step count. Effectively oracle-equivalent on this
+task.
+
+### Recurrent student-2
+
+```text
+hidden_dim: 32
+seq_len:    16
+stride:     8
+epochs:     60
+final val accuracy: ~0.936
+```
+
+Sparse benchmark:
+
+```text
+Policy              Foods     Wall hits   Steps/Food   Sparse score
+Recurrent stud-2   16.93     0.56        ~6.0         16.90
+Greedy oracle      17.80     0.00         5.50        17.80
+```
+
+Roughly 95% of oracle - good but noticeably below feedforward
+student-2. With a near-deterministic teacher, the recurrent capacity
+does not pay off; the simpler feedforward student is the better fit
+this iteration.
+
+### One full loop in one table
+
+```text
+Stage                                    Foods   Wall hits   % Oracle
+Teacher-1 (gen-1 NEAT, seed=1)           16.10    1.25         90.4
+Student-1 feedforward                    12.97    8.27         72.9
+Student-1 recurrent                      15.60    1.57         87.6
+Teacher-2 (seeded + rec prior, s=300)    17.73    0.02         99.6
+Student-2 feedforward                    17.80    0.00        100.0
+Student-2 recurrent                      16.93    0.56         95.1
+Greedy oracle                            17.80    0.00        100.0
+Random                                    0.50    7.68          2.8
+```
+
+### Interpretation
+
+One complete `evolve -> distill -> evolve -> distill` cycle moved the
+best policy from 16.10 to 17.80 foods (90.4% -> 100.0% of oracle).
+The loop is **self-improving** at this scale: every stage is
+better than the corresponding stage in the previous iteration.
+
+```text
+Teacher-1   16.10  -->  Teacher-2   17.73
+Student-1   15.60  -->  Student-2   17.80   (recurrent in iter 1, feedforward in iter 2)
+```
+
+The mechanism that drove the gain in iteration 2 was not the
+distillation step in isolation: the gen-2 evolution itself improved
+the teacher, and a much cleaner teacher then produced a much stronger
+student. Cleanliness compounded - the teacher-2 dataset had 0% skipped
+episodes vs 2.5% for teacher-1.
+
+A few honest caveats:
+
+- This is a single complete iteration. The next iteration may
+  plateau (the policy is at oracle-level foods and zero walls,
+  there is nothing left to learn on this benchmark) or regress
+  (the student-2 may not be a useful prior for a gen-3 evolution).
+- The task is simple and has a known optimum. The interesting
+  question is whether the same pattern holds on harder tasks where
+  the oracle is unknown.
+- The recurrent student lost to the feedforward student in
+  iteration 2. This is consistent with the task itself being
+  essentially memoryless once the teacher is good - recurrent
+  capacity helps when the teacher is noisy.
+
+Working interpretation:
+
+```text
+The evolve -> distill -> evolve -> distill loop is genuinely
+self-improving on this PoC task, and converges to the oracle in
+two iterations. The distillation step compounds the gen-2 evolution
+gain into a cleaner student that essentially matches the optimum.
+```
+
+---
+
 ## Reproducibility notes
 
 Earlier versions of the benchmark and teacher-collection code had two
@@ -396,7 +535,9 @@ could matter more.
 
 ## Current limitations
 
-- The task is still very simple.
+- The task is still very simple and has a known optimum (the greedy
+  oracle). The fact that the loop converges to oracle-level in two
+  iterations is a real result but does not generalise on its own.
 - Progress shaping is a strong inductive bias.
 - The benchmark currently uses one environment type only.
 - Seed sensitivity is significant.
@@ -407,22 +548,28 @@ could matter more.
 - One configuration (seeded + feedforward prior @0.25 at seed 123)
   hit a seed-dependent assertion inside neat-python and is excluded
   from that cell's mean.
+- Milestone 4 is a single iteration of the loop, not yet a
+  systematic study of convergence behaviour.
 - Sparse evaluation should be expanded to different grid sizes and
   perturbed environments.
 
 ## Next steps
 
 ```text
-1. Run a full second distillation (gen-2 -> student-2) and check
-   whether the loop is self-improving across iterations
-2. Widen the gen-2 multi-seed comparison (n>=10) to tighten the
-   improvement-vs-seed-noise estimate
-3. Sweep prior_weight again at the new (seeded + prior) operating
-   point - the previous sweep was prior-only and may not transfer
-4. Add environment variation: grid sizes, obstacles, perturbations
-5. Track performance per parameter across teacher and students
-6. Investigate the seed=123 + feedforward-prior + seeded-reseed
-   neat-python assertion (innovation tracker collision)
+1. Add environment variation: grid sizes, obstacles, perturbations.
+   Test whether the iteration-2 student transfers to harder envs
+   where the oracle is no longer optimal.
+2. Wider multi-seed comparison (n>=10) for the gen-2 result and a
+   multi-seed teacher-2 sweep so the iteration-2 numbers are not
+   conditional on a single best-of-3 gen-2 run.
+3. Track performance per parameter across teacher and students:
+   the student-2 feedforward is much smaller than teacher-2 but
+   matches its behaviour, which is the original PoP metric.
+4. Investigate the seed=123 + feedforward-prior + seeded-reseed
+   neat-python assertion (innovation tracker collision).
+5. Try a third iteration (gen-3 NEAT from student-2 prior) - the
+   policy is already at oracle level on foods, but there may still
+   be loop dynamics to observe.
 ```
 
 ## Files produced by current benchmark

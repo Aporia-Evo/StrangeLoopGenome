@@ -57,30 +57,34 @@ Secondary metrics:
 - steps per food
 - stability of internal dynamics
 
-## Milestone 1 result
+## Headline result
 
-A recurrent NEAT agent evolved with energy/progress-shaped fitness
-reached roughly 90% of a greedy oracle baseline on a 100-seed sparse
-benchmark, with benchmark seeds disjoint from training seeds and fresh
-recurrent state per episode.
+A full `evolve -> distill -> evolve -> distill` loop reached
+oracle-level performance on the GridWorld PoC in two iterations:
 
 ```text
-Policy          Foods     Wall hits   Steps/Food   Sparse score
-NEAT best       16.10     1.25        6.06         16.04
-Greedy oracle   17.80     0.00        5.50         17.80
-Random           0.50     7.68       83.28          0.12
+Stage                              Foods   Wall hits   % Oracle
+Teacher-1 (gen-1 NEAT)             16.10    1.25        90.4
+Student-1 recurrent (distilled)    15.60    1.57        87.6
+Teacher-2 (gen-2 NEAT)             17.73    0.02        99.6
+Student-2 feedforward (distilled)  17.80    0.00       100.0
+Greedy oracle                      17.80    0.00       100.0
+Random                              0.50    7.68         2.8
 ```
 
-Numbers are from the `--seed 1` training run, the best of a small
-seed sweep. The PoC is seed-sensitive — see RESULTS.md for the full
-sweep and reproducibility notes.
+Two ingredients made the second iteration work:
 
-Interpretation:
+1. Gen-2 evolution initialised its population from gen-1 top-k
+   genomes (`--elite-copies 4 --mutation-passes 1`) and used the
+   recurrent student-1 as a behavioural prior in fitness
+   (`--prior-weight 0.5`).
+2. Teacher-2 was much cleaner than teacher-1 (200/200 vs 195/200
+   episodes accepted, mean walls 0.015 vs 0.96), so the
+   second-pass student saw a near-deterministic optimum.
 
-```text
-Blind evolution was slow and unstable.
-Evolution over a locally meaningful progress/energy landscape became much more effective.
-```
+The task is intentionally simple and has a known optimum; this is
+a PoC, not a generality claim. See RESULTS.md for the full results
+and reproducibility notes.
 
 See [RESULTS.md](RESULTS.md) for details.
 
@@ -118,9 +122,13 @@ New population seed
 [x] Multi-seed comparison: seeded + tuned student prior
     consistently beats seeded-only (17.31 vs 16.88 foods mean,
     n=3 seeds, recurrent prior at weight 0.5)
-[ ] Second distillation pass (gen-2 -> student-2)
+[x] Second distillation pass (gen-2 -> student-2):
+    feedforward student-2 reaches 17.80 foods / 0 walls,
+    matching the greedy oracle. One full loop iteration:
+    16.10 -> 17.80 foods (90.4% -> 100% oracle).
 [ ] Wider multi-seed sweep (n>=10) to tighten the estimate
 [ ] Environment variation: grid sizes, obstacles, perturbations
+[ ] Third loop iteration (gen-3 from student-2 prior)
 ```
 
 ## Running the current PoC

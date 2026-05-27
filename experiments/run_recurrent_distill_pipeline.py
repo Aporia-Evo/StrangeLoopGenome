@@ -28,7 +28,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run-dir', default='runs/latest')
     parser.add_argument('--generations', type=int, default=60)
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--teacher-seed', type=int, default=2000)
     parser.add_argument('--student-seed', type=int, default=0)
     parser.add_argument('--min-teacher-foods', type=float, default=10.0)

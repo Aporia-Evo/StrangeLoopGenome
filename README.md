@@ -107,11 +107,17 @@ New population seed
 ## Current roadmap
 
 ```text
-1. Document Milestone 1 results in RESULTS.md
-2. Make benchmark runs reproducible
-3. Use Top-K genomes as teachers
-4. Build distillation
-5. Run evolve → distill → evolve
+[x] Milestone 1: energy-shaped recurrent NEAT baseline
+[x] Reproducible benchmark with fresh state per episode and
+    disjoint train/eval seeds
+[x] Top-K archive of evolved genomes
+[x] Top-1 clean distillation into feedforward and recurrent students
+[x] First evolve -> distill -> evolve loop
+    (student-prior, seeded reseed)
+[ ] Sweep prior_weight and try recurrent-student prior
+[ ] Multi-seed comparison for seeded gen-2
+[ ] Second distillation pass (gen-2 -> student-2)
+[ ] Environment variation: grid sizes, obstacles, perturbations
 ```
 
 ## Running the current PoC

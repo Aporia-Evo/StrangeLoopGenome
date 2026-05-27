@@ -715,6 +715,103 @@ milestones (those used the original 0.35), but it does mean:
 
 ---
 
+## Milestone 7: Naive energy-as-dynamics doesn't work (negative result)
+
+Milestone 6 ended with the observation that the energy term is doing
+real search-space shaping, but through a crude fitness coupling. The
+follow-up question: can the same effect be achieved by treating energy
+as an inner-loop relaxation (Hopfield style), where the recurrent
+network "settles" toward an attractor before each action?
+
+Two new knobs were added (commit `40e915e`):
+
+- `inner_steps`: number of times to call `net.activate(obs)` on the
+  same observation per environment step. The recurrent dynamics
+  evolve for k inner iterations; the action is read from the final
+  output.
+- `convergence_weight`: penalty on `mean_settle_delta` =
+  mean squared L2 distance between consecutive outputs during
+  settling. Intent: explicit selection pressure for genomes whose
+  inner dynamics converge to a stable attractor.
+
+Sweep at seed=1, energy_weight=0.15, 40 generations:
+
+```text
+inner_steps   convergence_weight   foods   walls
+1             0.0                  17.74    0.00   (milestone-6 baseline)
+3             0.0                   7.61    2.01
+3             1.0                   0.66   24.55  collapse
+3             5.0                   4.11    5.25
+5             1.0                   0.27   25.16  collapse
+5             5.0                   0.51   25.86  collapse
+```
+
+### What's actually happening
+
+1. **Naive `inner_steps > 1` makes things worse** (7.61 foods at
+   k=3 vs 17.74 at k=1). The recurrent network was not evolved
+   for settling, so running its dynamics for more iterations just
+   propagates them further along a non-converging trajectory.
+   "Thinking longer" without the right architecture is just noise.
+2. **`convergence_weight > 0` is a Goodhart trap.** The trivial
+   way to minimise `mean_settle_delta` is a **dead network**
+   that outputs the same value regardless of input or recurrent
+   state. The wall_hits figures (24-26 per episode, near the
+   maximum) confirm this - the agent picked a single action and
+   walked straight into a wall every step. The convergence metric
+   is gameable in the worst possible direction.
+
+### Why the lightweight approach is wrong
+
+For "energy as inner dynamics" to be more than a name, three things
+need to be true that are not true in this codebase yet:
+
+1. **The energy function must be explicit.** Hopfield networks
+   converge because `E = -1/2 x^T W x` is a well-defined Lyapunov
+   function. neat-python's `RecurrentNetwork` has no such function;
+   "low output delta" is not energy, it is just stationarity.
+2. **The architecture must support convergence.** Hopfield works
+   with symmetric weights and asynchronous updates. NEAT evolves
+   asymmetric recurrent topologies and updates all neurons each
+   step. There is no convergence guarantee.
+3. **The metric must reward convergence conditional on
+   responsiveness.** A network should settle within an
+   observation but jump when the observation changes. Penalising
+   raw delta also penalises responsiveness - so it selects for
+   dead networks.
+
+### Interpretation
+
+The original framing ("evolution over locally meaningful energy
+landscapes") is correct and milestone 6 showed the current
+fitness-coupled implementation is doing real work. The cheap
+upgrade to "energy as inner-loop relaxation" does not preserve that
+work - it removes it. A proper energy-as-dynamics implementation
+needs an explicit energy function, an architecture that supports
+attractor convergence, and a metric that distinguishes settled
+networks from dead ones.
+
+Working interpretation:
+
+```text
+"Energy as dynamics" cannot be retrofitted onto the existing
+recurrent NEAT setup by just adding inner iterations and a
+stability penalty. The framing requires a different network
+class (or at least different evolutionary constraints) that
+makes the energy function explicit and the dynamics provably
+convergent. Until that exists, the fitness-coupled energy term
+from Milestones 1-6 is doing the actual work the framing
+promised.
+```
+
+This is a negative result; the design work for a Hopfield-style
+network in this codebase is the next milestone, not just running
+more sweeps on the current knobs.
+
+Sweep CSV at `artifacts/milestone7/inner_steps_convergence_sweep.csv`.
+
+---
+
 ## Reproducibility notes
 
 Earlier versions of the benchmark and teacher-collection code had two
@@ -761,23 +858,30 @@ could matter more.
 ## Next steps
 
 ```text
-1. Re-run Milestones 1-5 with energy_weight=0.15 (the ablation
-   peak) to see how much of the previous headline numbers came
-   from a suboptimal default.
-2. Implement energy as inner-loop dynamics instead of fitness
-   penalty: relax the recurrent net for k inner iterations per
-   step toward an energy minimum, treat the attractor as the
-   action. This is the "energy-as-dynamics" direction the README
-   framing implied.
-3. Add obstacles and stochastic action failures to GridWorld and
+1. Design and implement a proper energy-based network class with
+   an explicit energy function and provably convergent dynamics.
+   Two candidate paths:
+     a) Hopfield-style: symmetric weight constraint, define
+        E = -1/2 x^T W x + bias terms, asynchronous updates.
+        Compatible with NEAT only if mutation respects symmetry.
+     b) Optimisation-style: forward pass is gradient descent on
+        an explicit energy E(x, obs). Use PyTorch for autograd,
+        evolve the parameters of E itself.
+2. Add a "responsiveness vs settling" metric that distinguishes
+   converged networks from dead networks: low delta during inner
+   iterations on a fixed obs, high delta when obs changes.
+3. Re-run Milestones 1-5 with energy_weight=0.15 (the milestone-6
+   ablation peak) to see how much of the earlier headline numbers
+   came from a suboptimal default.
+4. Add obstacles and stochastic action failures to GridWorld and
    re-run the cross-environment benchmark. The greedy oracle stops
    being optimal in those worlds, so the loop has somewhere to go.
-4. Train with environment variation (sample grid size per episode
+5. Train with environment variation (sample grid size per episode
    during evaluation) and see if recurrent-student-2 stays a strong
    generalist or if a new run can beat it.
-5. Track performance per parameter across all teachers and students
+6. Track performance per parameter across all teachers and students
    at every grid size.
-6. Investigate the seed=123 + feedforward-prior + seeded-reseed
+7. Investigate the seed=123 + feedforward-prior + seeded-reseed
    neat-python assertion (innovation tracker collision).
 ```
 

@@ -140,8 +140,13 @@ New population seed
     best run (17.74). Removing the energy term entirely
     collapses two of three seeds - energy is doing real
     search-shaping work, but through a crude coupling.
-[ ] Implement energy as inner-loop dynamics (relaxation in the
-    recurrent forward pass), not as a fitness penalty
+[x] Lightweight energy-as-dynamics attempt (inner_steps and
+    convergence_weight) - negative result. Naive inner
+    iterations make things worse, and the convergence metric
+    is gameable by dead networks. A proper Hopfield-style
+    energy function and architecture are needed.
+[ ] Design and implement a proper energy-based network class
+    with explicit E(x, obs) and provably convergent dynamics
 [ ] Add obstacles and stochastic perturbations to GridWorld
 [ ] Train with environment variation, then re-benchmark
 [ ] Re-run earlier milestones with energy_weight=0.15

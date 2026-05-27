@@ -102,18 +102,20 @@ def summarize(rows):
     return summary
 
 
-def make_neat_policy(genome, config):
+def make_neat_policy(genome, config, inner_steps=1):
     net = neat.nn.RecurrentNetwork.create(genome, config)
 
     def policy(obs):
-        output = net.activate(obs)
+        output = None
+        for _ in range(inner_steps):
+            output = net.activate(obs)
         return int(np.argmax(output))
 
     policy.reset = net.reset
     return policy
 
 
-def benchmark(num_seeds=100, seed=0, run_dir='runs/latest', first_seed=10000):
+def benchmark(num_seeds=100, seed=0, run_dir='runs/latest', first_seed=10000, inner_steps=1):
     set_global_seed(seed)
 
     run_path = PROJECT_ROOT / run_dir
@@ -121,7 +123,7 @@ def benchmark(num_seeds=100, seed=0, run_dir='runs/latest', first_seed=10000):
     genome = load_best_genome(run_path)
 
     policies = {
-        'neat_best': make_neat_policy(genome, config),
+        'neat_best': make_neat_policy(genome, config, inner_steps=inner_steps),
         'greedy_oracle': greedy_action,
         'random': lambda obs, rng=np.random.default_rng(seed): random_action(rng),
     }
@@ -135,6 +137,7 @@ def benchmark(num_seeds=100, seed=0, run_dir='runs/latest', first_seed=10000):
             'num_seeds': num_seeds,
             'seed': seed,
             'first_seed': first_seed,
+            'inner_steps': inner_steps,
             'run_dir': str(run_path),
         },
     )
@@ -197,6 +200,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--run-dir', type=str, default='runs/latest')
     parser.add_argument('--first-seed', type=int, default=10000)
+    parser.add_argument('--inner-steps', type=int, default=1)
     return parser.parse_args()
 
 
@@ -207,4 +211,5 @@ if __name__ == '__main__':
         seed=args.seed,
         run_dir=args.run_dir,
         first_seed=args.first_seed,
+        inner_steps=args.inner_steps,
     )

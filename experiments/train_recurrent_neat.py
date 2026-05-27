@@ -13,6 +13,8 @@ from slg.utils.reproducibility import save_run_config, set_global_seed
 
 
 energy_weight = 0.35
+inner_steps = 1
+convergence_weight = 0.0
 
 
 def eval_genomes(genomes, config):
@@ -22,14 +24,26 @@ def eval_genomes(genomes, config):
             config,
             return_details=True,
             energy_weight=energy_weight,
+            inner_steps=inner_steps,
+            convergence_weight=convergence_weight,
         )
         genome.fitness = details['fitness']
         genome.slg_metrics = details
 
 
-def run(generations=40, seed=1, output_dir='runs/latest', top_k=10, energy_weight_value=0.35):
-    global energy_weight
+def run(
+    generations=40,
+    seed=1,
+    output_dir='runs/latest',
+    top_k=10,
+    energy_weight_value=0.35,
+    inner_steps_value=1,
+    convergence_weight_value=0.0,
+):
+    global energy_weight, inner_steps, convergence_weight
     energy_weight = energy_weight_value
+    inner_steps = inner_steps_value
+    convergence_weight = convergence_weight_value
 
     set_global_seed(seed)
 
@@ -45,6 +59,8 @@ def run(generations=40, seed=1, output_dir='runs/latest', top_k=10, energy_weigh
             'output_dir': str(output_path),
             'top_k': top_k,
             'energy_weight': energy_weight,
+            'inner_steps': inner_steps,
+            'convergence_weight': convergence_weight,
             'config_path': str(config_path),
         },
     )
@@ -83,6 +99,8 @@ def parse_args():
     parser.add_argument('--output-dir', type=str, default='runs/latest')
     parser.add_argument('--top-k', type=int, default=10)
     parser.add_argument('--energy-weight', type=float, default=0.35)
+    parser.add_argument('--inner-steps', type=int, default=1)
+    parser.add_argument('--convergence-weight', type=float, default=0.0)
     return parser.parse_args()
 
 
@@ -94,4 +112,6 @@ if __name__ == '__main__':
         output_dir=args.output_dir,
         top_k=args.top_k,
         energy_weight_value=args.energy_weight,
+        inner_steps_value=args.inner_steps,
+        convergence_weight_value=args.convergence_weight,
     )

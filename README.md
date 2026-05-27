@@ -59,32 +59,37 @@ Secondary metrics:
 
 ## Headline result
 
-A full `evolve -> distill -> evolve -> distill` loop reached
-oracle-level performance on the GridWorld PoC in two iterations:
+A full `evolve -> distill -> evolve -> distill` loop on an 8x8
+GridWorld reached oracle-level performance at the training grid
+size, but a cross-size benchmark exposed that the iterated
+champion is brittle. Mean foods per episode:
 
 ```text
-Stage                              Foods   Wall hits   % Oracle
-Teacher-1 (gen-1 NEAT)             16.10    1.25        90.4
-Student-1 recurrent (distilled)    15.60    1.57        87.6
-Teacher-2 (gen-2 NEAT)             17.73    0.02        99.6
-Student-2 feedforward (distilled)  17.80    0.00       100.0
-Greedy oracle                      17.80    0.00       100.0
-Random                              0.50    7.68         2.8
+Policy                size=8 (train)   worst across 6,8,10,12,16
+greedy_oracle              17.80              17.66
+neat_teacher_1             16.10              12.97
+student_1_recurrent        15.60              14.82
+neat_teacher_2             17.73               0.82  *
+student_2_feedforward      17.80               1.68  *
+student_2_recurrent        16.93              15.55
+random                      0.50               0.15
 ```
 
-Two ingredients made the second iteration work:
+`*` Collapses out-of-distribution: the Milestone-4 "matches the
+oracle" headline holds only on the 8x8 training grid; both the
+iteration-2 NEAT teacher and the iteration-2 feedforward student
+fall apart on grid sizes >= 10.
 
-1. Gen-2 evolution initialised its population from gen-1 top-k
-   genomes (`--elite-copies 4 --mutation-passes 1`) and used the
-   recurrent student-1 as a behavioural prior in fitness
-   (`--prior-weight 0.5`).
-2. Teacher-2 was much cleaner than teacher-1 (200/200 vs 195/200
-   episodes accepted, mean walls 0.015 vs 0.96), so the
-   second-pass student saw a near-deterministic optimum.
+The actually robust learned policies are the **recurrent** students.
+Student-2 recurrent (worst case 15.55, mean 16.40 across sizes) is
+the best learned generalist; student-1 recurrent actually *improves*
+with grid size. The recurrent capacity carries the policy across
+distributional shifts that the feedforward student and the NEAT
+genomes cannot survive.
 
 The task is intentionally simple and has a known optimum; this is
-a PoC, not a generality claim. See RESULTS.md for the full results
-and reproducibility notes.
+a PoC, not a generality claim. See RESULTS.md for the full results,
+the cross-size table, and reproducibility notes.
 
 See [RESULTS.md](RESULTS.md) for details.
 
@@ -124,11 +129,15 @@ New population seed
     n=3 seeds, recurrent prior at weight 0.5)
 [x] Second distillation pass (gen-2 -> student-2):
     feedforward student-2 reaches 17.80 foods / 0 walls,
-    matching the greedy oracle. One full loop iteration:
-    16.10 -> 17.80 foods (90.4% -> 100% oracle).
+    matching the greedy oracle at the training grid size
+[x] Cross-grid-size benchmark on sizes 6, 8, 10, 12, 16:
+    iteration-2 champion is brittle, recurrent students
+    generalise; student-2 recurrent is the best generalist
+    (worst case 15.55 foods, mean 16.40)
+[ ] Add obstacles and stochastic perturbations to GridWorld
+[ ] Train with environment variation, then re-benchmark
 [ ] Wider multi-seed sweep (n>=10) to tighten the estimate
-[ ] Environment variation: grid sizes, obstacles, perturbations
-[ ] Third loop iteration (gen-3 from student-2 prior)
+[ ] Third loop iteration with student-2 recurrent as prior
 ```
 
 ## Running the current PoC

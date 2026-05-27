@@ -1,0 +1,338 @@
+{
+  "greedy_oracle": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 17.85,
+      "foods_std": 2.246664193866097,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 17.8,
+      "foods_std": 2.4698178070456938,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 17.79,
+      "foods_std": 2.4053897813036453,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 17.66,
+      "foods_std": 2.400916491675627,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 17.8,
+      "foods_std": 2.5019992006393608,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    }
+  ],
+  "random": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 0.88,
+      "foods_std": 1.002796090937734,
+      "walls_mean": 8.73,
+      "walls_std": 3.261456729745161
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 0.5,
+      "foods_std": 0.806225774829855,
+      "walls_mean": 7.68,
+      "walls_std": 3.841562182237846
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 0.31,
+      "foods_std": 0.5602677931132575,
+      "walls_mean": 7.12,
+      "walls_std": 3.541976849162061
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 0.24,
+      "foods_std": 0.5314132102234569,
+      "walls_mean": 5.86,
+      "walls_std": 3.5071926094812644
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 0.15,
+      "foods_std": 0.3840572873934304,
+      "walls_mean": 4.61,
+      "walls_std": 3.566216482492335
+    }
+  ],
+  "neat_teacher_1": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 16.58,
+      "foods_std": 1.9502820308868152,
+      "walls_mean": 0.92,
+      "walls_std": 0.8681013765684283
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 16.1,
+      "foods_std": 2.0322401432901573,
+      "walls_mean": 1.25,
+      "walls_std": 1.0988630487917956
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 16.36,
+      "foods_std": 2.174948275247023,
+      "walls_mean": 0.66,
+      "walls_std": 0.8027452896155792
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 16.4,
+      "foods_std": 2.227105745132009,
+      "walls_mean": 0.58,
+      "walls_std": 0.7769169839822013
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 12.97,
+      "foods_std": 5.713939096630275,
+      "walls_mean": 8.68,
+      "walls_std": 10.736740659995471
+    }
+  ],
+  "student_1_ff": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 17.85,
+      "foods_std": 2.246664193866097,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 12.97,
+      "foods_std": 6.597658675621224,
+      "walls_mean": 8.27,
+      "walls_std": 11.258645566852172
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 11.25,
+      "foods_std": 7.085725086397298,
+      "walls_mean": 10.39,
+      "walls_std": 11.557590579355198
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 9.45,
+      "foods_std": 6.778458526833368,
+      "walls_mean": 13.76,
+      "walls_std": 10.87577123702039
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 2.78,
+      "foods_std": 2.944758054577659,
+      "walls_mean": 8.26,
+      "walls_std": 10.19079977234368
+    }
+  ],
+  "student_1_recurrent": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 14.82,
+      "foods_std": 1.6992939710362065,
+      "walls_mean": 2.2,
+      "walls_std": 1.1489125293076057
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 15.6,
+      "foods_std": 1.8973665961010275,
+      "walls_mean": 1.57,
+      "walls_std": 0.9823950325607311
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 16.01,
+      "foods_std": 2.1470677679104586,
+      "walls_mean": 1.22,
+      "walls_std": 0.9008884503644167
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 16.54,
+      "foods_std": 2.1043763921884318,
+      "walls_mean": 0.49,
+      "walls_std": 0.6854925236645546
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 16.97,
+      "foods_std": 2.2201576520598714,
+      "walls_mean": 0.46,
+      "walls_std": 0.9318798205777397
+    }
+  ],
+  "neat_teacher_2": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 17.75,
+      "foods_std": 2.2107690969434146,
+      "walls_mean": 0.03,
+      "walls_std": 0.1705872210923198
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 17.73,
+      "foods_std": 2.4325089927891326,
+      "walls_mean": 0.02,
+      "walls_std": 0.13999999999999999
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 1.11,
+      "foods_std": 1.207435298473587,
+      "walls_mean": 0.49,
+      "walls_std": 3.430728785549799
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 0.89,
+      "foods_std": 1.0187737727287645,
+      "walls_mean": 0.25,
+      "walls_std": 2.48746859276655
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 0.82,
+      "foods_std": 0.983666610188635,
+      "walls_mean": 0.47,
+      "walls_std": 3.296831812513341
+    }
+  ],
+  "student_2_ff": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 17.69,
+      "foods_std": 2.6858704361901,
+      "walls_mean": 0.25,
+      "walls_std": 2.48746859276655
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 17.8,
+      "foods_std": 2.4698178070456938,
+      "walls_mean": 0.0,
+      "walls_std": 0.0
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 17.27,
+      "foods_std": 3.420102337650147,
+      "walls_mean": 0.66,
+      "walls_std": 3.7715248905449372
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 14.25,
+      "foods_std": 5.743474558139872,
+      "walls_mean": 3.77,
+      "walls_std": 8.296812641008595
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 1.68,
+      "foods_std": 1.8808508712813998,
+      "walls_mean": 6.25,
+      "walls_std": 8.645663652953427
+    }
+  ],
+  "student_2_recurrent": [
+    {
+      "size": 6,
+      "max_steps": 72,
+      "foods_mean": 15.6,
+      "foods_std": 1.6613247725836149,
+      "walls_mean": 1.58,
+      "walls_std": 1.0117311895953391
+    },
+    {
+      "size": 8,
+      "max_steps": 96,
+      "foods_mean": 16.93,
+      "foods_std": 2.136609463612852,
+      "walls_mean": 0.56,
+      "walls_std": 0.6529931086925803
+    },
+    {
+      "size": 10,
+      "max_steps": 120,
+      "foods_mean": 17.25,
+      "foods_std": 2.19260119492807,
+      "walls_mean": 0.26,
+      "walls_std": 0.46086874487211643
+    },
+    {
+      "size": 12,
+      "max_steps": 144,
+      "foods_mean": 16.67,
+      "foods_std": 2.4659886455537467,
+      "walls_mean": 0.27,
+      "walls_std": 0.48692915295759404
+    },
+    {
+      "size": 16,
+      "max_steps": 192,
+      "foods_mean": 15.55,
+      "foods_std": 2.329699551444349,
+      "walls_mean": 0.62,
+      "walls_std": 1.0176443386566842
+    }
+  ]
+}

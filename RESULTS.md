@@ -501,14 +501,123 @@ A few honest caveats:
   essentially memoryless once the teacher is good - recurrent
   capacity helps when the teacher is noisy.
 
-Working interpretation:
+Working interpretation (subject to revision in Milestone 5):
 
 ```text
 The evolve -> distill -> evolve -> distill loop is genuinely
-self-improving on this PoC task, and converges to the oracle in
-two iterations. The distillation step compounds the gen-2 evolution
-gain into a cleaner student that essentially matches the optimum.
+self-improving on this PoC task at the training grid size, and
+converges to the oracle in two iterations. The distillation step
+compounds the gen-2 evolution gain into a cleaner student that
+essentially matches the optimum.
 ```
+
+Milestone 5 below tests this loop on grid sizes outside the
+training distribution and finds that the in-distribution
+self-improvement claim does not transfer.
+
+---
+
+## Milestone 5: Cross-grid-size generalisation reveals brittleness
+
+All training and benchmarking up to Milestone 4 used an 8x8 grid.
+This milestone benchmarks every policy on sizes 6, 8, 10, 12, 16
+with `max_steps = 12 * size` (so the same per-cell time budget),
+using the same 100-seed benchmark range (10000..10099) per size.
+
+Sparse benchmark, mean foods per episode:
+
+```text
+Policy                size=6  size=8  size=10  size=12  size=16   mean   worst
+greedy_oracle         17.85   17.80   17.79    17.66    17.80    17.78  17.66
+neat_teacher_1        16.58   16.10   16.36    16.40    12.97    15.68  12.97
+student_1_ff          17.85   12.97   11.25     9.45     2.78    10.86   2.78
+student_1_recurrent   14.82   15.60   16.01    16.54    16.97    15.99  14.82
+neat_teacher_2        17.75   17.73    1.11     0.89     0.82     7.66   0.82
+student_2_ff          17.69   17.80   17.27    14.25     1.68    13.74   1.68
+student_2_recurrent   15.60   16.93   17.25    16.67    15.55    16.40  15.55
+random                 0.88    0.50    0.31     0.24     0.15     0.42   0.15
+```
+
+### What's actually happening
+
+1. **The Milestone-4 champion is brittle.** NEAT teacher-2 collapses
+   from 17.73 foods at size 8 to 1.11 at size 10 and 0.82 at
+   size 16. It is a near-oracle on its training distribution and
+   barely above random everywhere else.
+2. **Student-2 feedforward inherits the brittleness with a delay.**
+   It survives sizes 6-10 (>17 foods) but collapses at size 16
+   (1.68 foods). Its closeness to the oracle on size 8 was a
+   memorised match, not a generalisable policy.
+3. **Recurrent students generalise.** Student-1 recurrent in
+   particular *improves* with grid size (14.82 -> 16.97 going from
+   size 6 to 16); student-2 recurrent stays in the 15.5-17.3
+   range across all sizes.
+4. **NEAT teacher-1 is more robust than teacher-2.** It degrades
+   gracefully (16.58, 16.10, 16.36, 16.40, 12.97) rather than
+   collapsing. The "weaker" gen-1 policy is the better generalist.
+5. **The best single learned generalist is student-2 recurrent**
+   (worst case 15.55, mean 16.40 across sizes). Student-1
+   recurrent is a close second (14.82 / 15.99). Both feedforward
+   students and both NEAT teachers are dominated by these two
+   recurrent students on worst-case foods.
+
+### Interpretation
+
+The Milestone-4 claim that the evolve -> distill loop is
+self-improving needs to be split into two claims:
+
+```text
+Within training distribution (8x8):
+  Teacher-1 16.10  ->  Teacher-2 17.73  ->  Student-2 FF 17.80  (oracle level)
+
+Across all tested grid sizes (worst case):
+  Teacher-1 12.97  ->  Teacher-2  0.82  ->  Student-2 FF  1.68  (worse)
+  Student-1 rec 14.82  ->  Student-2 rec 15.55                   (slight gain)
+```
+
+The second iteration of the loop did not produce a better
+policy in any out-of-distribution sense; it produced an
+over-specialised in-distribution one. Distilling that specialised
+teacher into a feedforward student carried the over-specialisation
+into the student. The recurrent student-2 partially recovers
+because the GRU compensates for grid-size-dependent dynamics.
+
+Working interpretation:
+
+```text
+Iterating evolve -> distill on a fixed environment narrows the
+policy onto that environment. Headline numbers at the training
+size flatter the loop. Worst-case foods across sizes is a much
+harsher and more honest benchmark.
+
+The recurrent student variants are the only learned policies that
+remain competitive everywhere. Among them, student-2 recurrent
+is best by worst-case foods and by mean foods across sizes.
+```
+
+This reframes the "headline" of this repo: matching the oracle on
+the training distribution is achievable, but it is not the
+interesting metric. The loop must be measured on sizes it has not
+seen, or the apparent gain is an artefact of distribution overlap.
+
+### Wall hits across sizes
+
+For completeness, mean wall hits per episode at each size:
+
+```text
+Policy                size=6  size=8  size=10  size=12  size=16
+greedy_oracle          0.00    0.00    0.00     0.00     0.00
+neat_teacher_1         0.92    1.25    0.66     0.58     8.68
+student_1_ff           0.00    8.27   10.39    13.76     8.26
+student_1_recurrent    2.20    1.57    1.22     0.49     0.46
+neat_teacher_2         0.03    0.02    0.49     0.25     0.47
+student_2_ff           0.25    0.00    0.66     3.77     6.25
+student_2_recurrent    1.58    0.56    0.26     0.27     0.62
+```
+
+Recurrent students dominate on safe navigation across all sizes;
+feedforward students hit walls heavily once they leave their
+training distribution.
 
 ---
 
@@ -536,10 +645,12 @@ could matter more.
 ## Current limitations
 
 - The task is still very simple and has a known optimum (the greedy
-  oracle). The fact that the loop converges to oracle-level in two
-  iterations is a real result but does not generalise on its own.
+  oracle).
 - Progress shaping is a strong inductive bias.
-- The benchmark currently uses one environment type only.
+- The cross-size benchmark exposed brittleness in the iterated-loop
+  champion. The "matches the oracle" claim only holds at the
+  training grid size; iterated training narrowed the policy onto
+  that distribution.
 - Seed sensitivity is significant.
 - Clean distillation depends strongly on finding a good teacher first.
 - The multi-seed gen-2 comparison used n=3 training seeds; the
@@ -548,28 +659,28 @@ could matter more.
 - One configuration (seeded + feedforward prior @0.25 at seed 123)
   hit a seed-dependent assertion inside neat-python and is excluded
   from that cell's mean.
-- Milestone 4 is a single iteration of the loop, not yet a
-  systematic study of convergence behaviour.
-- Sparse evaluation should be expanded to different grid sizes and
-  perturbed environments.
+- Cross-size evaluation only varied grid size; obstacles and
+  stochastic perturbations are still untested.
+- Training itself still happens on a fixed 8x8 grid. The cross-size
+  numbers test transfer, not robustness-aware training.
 
 ## Next steps
 
 ```text
-1. Add environment variation: grid sizes, obstacles, perturbations.
-   Test whether the iteration-2 student transfers to harder envs
-   where the oracle is no longer optimal.
-2. Wider multi-seed comparison (n>=10) for the gen-2 result and a
-   multi-seed teacher-2 sweep so the iteration-2 numbers are not
+1. Train with environment variation (sample grid size per episode
+   during evaluation) and see if recurrent-student-2 stays a strong
+   generalist or if a new run can beat it.
+2. Add obstacles and stochastic action failures to GridWorld and
+   re-run the cross-environment benchmark. The greedy oracle stops
+   being optimal in those worlds, so the loop has somewhere to go.
+3. Use student-2 recurrent (the actual generalist) as the prior
+   for a gen-3 evolution and re-run the cross-size benchmark.
+4. Wider multi-seed teacher-2 sweep so iteration-2 numbers are not
    conditional on a single best-of-3 gen-2 run.
-3. Track performance per parameter across teacher and students:
-   the student-2 feedforward is much smaller than teacher-2 but
-   matches its behaviour, which is the original PoP metric.
-4. Investigate the seed=123 + feedforward-prior + seeded-reseed
+5. Track performance per parameter across all teachers and students
+   at every grid size.
+6. Investigate the seed=123 + feedforward-prior + seeded-reseed
    neat-python assertion (innovation tracker collision).
-5. Try a third iteration (gen-3 NEAT from student-2 prior) - the
-   policy is already at oracle level on foods, but there may still
-   be loop dynamics to observe.
 ```
 
 ## Files produced by current benchmark

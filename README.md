@@ -114,8 +114,9 @@ New population seed
 [x] Top-1 clean distillation into feedforward and recurrent students
 [x] First evolve -> distill -> evolve loop
     (student-prior, seeded reseed)
-[ ] Sweep prior_weight and try recurrent-student prior
+[x] Sweep prior_weight and try recurrent-student prior
 [ ] Multi-seed comparison for seeded gen-2
+[ ] Combine seeded reseed with a tuned student prior
 [ ] Second distillation pass (gen-2 -> student-2)
 [ ] Environment variation: grid sizes, obstacles, perturbations
 ```

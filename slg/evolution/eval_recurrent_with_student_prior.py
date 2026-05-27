@@ -2,7 +2,9 @@ from pathlib import Path
 
 import neat
 import numpy as np
+import torch
 
+from slg.distill.recurrent_student import load_recurrent_student
 from slg.distill.student import load_student
 from slg.energy.energy import total_energy
 from slg.envs.gridworld import GridWorld
@@ -11,7 +13,22 @@ from slg.envs.gridworld import GridWorld
 class StudentPrior:
     def __init__(self, student_path):
         self.student_path = Path(student_path)
-        self.model, self.config, self.checkpoint = load_student(self.student_path)
+        checkpoint = torch.load(self.student_path, map_location='cpu')
+        config = checkpoint.get('config', {})
+        self.is_recurrent = 'seq_len' in config
+
+        if self.is_recurrent:
+            self.model, self.config, self.checkpoint = load_recurrent_student(
+                self.student_path
+            )
+        else:
+            self.model, self.config, self.checkpoint = load_student(
+                self.student_path
+            )
+
+    def reset(self):
+        if self.is_recurrent and hasattr(self.model, 'reset'):
+            self.model.reset()
 
     def act(self, obs):
         return self.model.act(obs)
@@ -37,6 +54,7 @@ def evaluate_recurrent_genome_with_student_prior(
     for episode in range(episodes):
         net = neat.nn.RecurrentNetwork.create(genome, config)
         env = GridWorld(size=8, max_steps=96, seed=episode)
+        student_prior.reset()
 
         obs = env.reset()
         done = False

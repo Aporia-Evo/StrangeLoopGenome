@@ -254,40 +254,77 @@ Stage                                Foods    Wall hits   Steps/Food   % Oracle
 Gen-1 NEAT (seed=1)                  16.10     1.25        6.06         90.4
 Feedforward student (distilled)      12.97     8.27       10.01         72.9
 Recurrent student (distilled)        15.60     1.57        6.25         87.6
-Gen-2 NEAT with student prior         4.45     6.80       28.97         25.0
 Gen-2 NEAT seeded from top-k         16.57     1.21        6.04         93.1
 Greedy oracle                        17.80     0.00        5.50        100.0
 ```
 
+### Student-prior weight sweep
+
+The initial student-prior run used `prior_weight=1.0` and collapsed to
+4.45 foods (25% oracle). To check whether the failure was the method
+or the hyperparameter, the prior weight was swept for both student
+types (40 generations, training seed 123).
+
+`StudentPrior` was also extended to accept the recurrent student
+checkpoint, and now resets the student's hidden state at the start of
+each genome-evaluation episode (the recurrent prior would otherwise
+leak hidden state across the 5 evaluation episodes, the same class of
+bug fixed in the benchmark and teacher collector).
+
+Sparse benchmark over 100 seeds (10000..10099):
+
+```text
+prior_weight    Feedforward prior         Recurrent prior
+                foods   walls             foods   walls
+0.10             2.30   11.14              5.65    8.50
+0.25            13.67    0.67             12.39    2.69
+0.50             8.67    3.73             14.28    2.57
+1.00             4.45    6.80               -       -
+```
+
+Best of each:
+
+```text
+Feedforward prior @ 0.25: foods=13.67  walls=0.67   76.8% of oracle
+Recurrent prior   @ 0.50: foods=14.28  walls=2.57   80.2% of oracle
+```
+
 ### Interpretation
 
-The first evolve → distill → evolve loop showed two very different
-outcomes depending on how the distilled knowledge was reinjected:
+The initial collapse at `prior_weight=1.0` was a hyperparameter
+problem, not a fundamental failure of the student-prior idea. With a
+sensible weight, the student-prior strategy produces a policy roughly
+comparable to (but still weaker than) the distilled student itself:
 
-- The **student-prior** strategy badly regressed (4.45 foods vs the
-  gen-1 teacher's 16.10). Adding agreement with the feedforward
-  student to fitness pulled evolution toward a policy that imitates
-  the weaker student rather than improving over the teacher.
-  Either the prior weight is too high or this is the wrong
-  reinjection mechanism for this task.
-- The **seeded** strategy gave a small improvement
-  (16.57 vs 16.10 foods, roughly two standard errors over the
-  benchmark mean). The benefit is real but modest, and well within
-  the seed-sensitivity range observed in Milestone 1.
+- The feedforward-prior gen-2 best (13.67 foods) is slightly above
+  the feedforward student (12.97) but well below the gen-1 teacher
+  (16.10).
+- The recurrent-prior gen-2 best (14.28) is below the recurrent
+  student (15.60) and also below the gen-1 teacher.
+
+The seeded reseed (16.57 foods) remains the only second-generation
+strategy that matches or slightly beats the gen-1 teacher.
+
+Both prior-shaped curves have a clear peak (feedforward at 0.25,
+recurrent at 0.50), with sharp degradation on both sides. The
+agreement bonus competes with task reward; too little has no
+guidance, too much locks evolution to imitating a student that is
+itself worse than the teacher.
 
 Working interpretation:
 
 ```text
-For this PoC, the distillation step did not add value to the second
-generation. Seeding the next population from the previous generation's
-top genomes is a stronger starting point than using a distilled
-behavioural prior as a fitness term.
+A behavioural prior from a student that is weaker than the teacher
+caps gen-2 evolution near the student's ability. Direct reseeding of
+the next population from the previous top-k genomes preserves the
+teacher's strength and adds a small refinement on top.
 ```
 
-This is a negative-but-honest result for the student-prior approach,
-and a weakly positive result for direct genome reseeding. Both will
-need more seeds and tighter prior-weight sweeps before any strong
-claim about evolve → distill → evolve as a method.
+This is now a more nuanced picture than "student-prior just fails":
+the mechanism works at moderate weights, it just cannot exceed the
+strength of its prior. Beating the gen-1 teacher likely needs either
+a stronger student (closer to the teacher) or a different
+reinjection strategy entirely.
 
 ---
 
@@ -320,23 +357,24 @@ could matter more.
 - Seed sensitivity is significant; reported numbers come from the best
   seed in a small sweep.
 - Clean distillation depends strongly on finding a good teacher first.
-- The first evolve → distill → evolve loop only used a single training
-  seed per strategy; the prior-weight was not swept.
+- The student-prior gen-2 sweep only used a single training seed per
+  (student-type, weight) cell; the peaks may move under reseeding.
+- The student-prior strategy cannot exceed the strength of its prior;
+  closing the gap to gen-1 likely requires a stronger student.
 - Sparse evaluation should be expanded to different grid sizes and
   perturbed environments.
 
 ## Next steps
 
 ```text
-1. Sweep prior_weight for student-prior gen-2 evolution
-   (the prior may have dominated over task reward)
-2. Try recurrent-student prior instead of feedforward-student prior
-3. Run a multi-seed comparison for seeded gen-2 to confirm the
-   small improvement over gen-1 is real
-4. Run a full second distillation (gen-2 -> student-2)
-   to close one more loop iteration
-5. Add environment variation: grid sizes, obstacles, perturbations
-6. Track performance per parameter across teacher and students
+1. Multi-seed comparison for seeded gen-2 to confirm the small
+   improvement over gen-1 is real, not seed noise
+2. Combine seeded reseed with a (well-tuned) student prior;
+   they may compose better than either alone
+3. Run a full second distillation (gen-2 -> student-2) and check
+   whether the loop is self-improving across iterations
+4. Add environment variation: grid sizes, obstacles, perturbations
+5. Track performance per parameter across teacher and students
 ```
 
 ## Files produced by current benchmark
